@@ -8,7 +8,7 @@ import urllib.parse
 from pathlib import Path
 from typing import Any
 
-from playwright.sync_api import BrowserContext, Page, Route, sync_playwright
+from playwright.sync_api import BrowserContext, Error as PlaywrightError, Page, Route, sync_playwright
 
 
 class BrowserRunnerError(RuntimeError):
@@ -35,6 +35,8 @@ class BrowserRunner:
         self.dry_run = dry_run
         self.root = Path(self.config.get("root_dir", ".")).expanduser().resolve()
         self.allowed_hosts = {str(x).lower() for x in self.config.get("allow_hosts", [])}
+        self.resource_hosts = {str(x).lower() for x in self.config.get("resource_hosts", [])}
+        self.network_hosts = self.allowed_hosts | self.resource_hosts
         self.steps = self.config.get("steps", [])
         self.headless = bool(self.config.get("headless", True))
         self.timeout_ms = int(self.config.get("timeout_ms", 30_000))
@@ -54,6 +56,15 @@ class BrowserRunner:
             raise BrowserRunnerError(f"Path is outside root_dir: {path}") from exc
         return path
 
+    @staticmethod
+    def _check_output(path: Path, overwrite: bool) -> None:
+        if not path.exists():
+            return
+        if path.is_dir():
+            raise BrowserRunnerError(f"Output path is a directory: {path}")
+        if not overwrite:
+            raise BrowserRunnerError(f"Output already exists and overwrite=false: {path}")
+
     def _assert_allowed_url(self, url: str) -> None:
         if url == "about:blank":
             return
@@ -65,13 +76,14 @@ class BrowserRunner:
             raise BrowserRunnerError(f"Top-level host is not allowed: {host}")
 
     def _route_guard(self, route: Route) -> None:
-        request = route.request
-        if request.resource_type == "document":
-            parsed = urllib.parse.urlparse(request.url)
-            host = (parsed.hostname or "").lower()
-            if parsed.scheme not in {"https", "about"} or (host and host not in self.allowed_hosts):
-                route.abort()
-                return
+        parsed = urllib.parse.urlparse(route.request.url)
+        if parsed.scheme in {"about", "data", "blob"}:
+            route.continue_()
+            return
+        host = (parsed.hostname or "").lower()
+        if parsed.scheme != "https" or host not in self.network_hosts:
+            route.abort()
+            return
         route.continue_()
 
     def _validate_step(self, step: dict[str, Any]) -> None:
@@ -118,12 +130,18 @@ class BrowserRunner:
 
         elif action == "screenshot":
             path = self._path(str(step["path"]))
+            overwrite = bool(step.get("overwrite", False))
+            self._check_output(path, overwrite)
             path.parent.mkdir(parents=True, exist_ok=True)
             page.screenshot(path=str(path), full_page=bool(step.get("full_page", False)))
 
         elif action == "download":
             path = self._path(str(step["save_as"]))
+            overwrite = bool(step.get("overwrite", False))
+            self._check_output(path, overwrite)
             path.parent.mkdir(parents=True, exist_ok=True)
+            if path.exists() and overwrite:
+                path.unlink()
             with page.expect_download() as download_info:
                 page.locator(selector).click()
             download_info.value.save_as(str(path))
@@ -136,7 +154,12 @@ class BrowserRunner:
             self._validate_step(step)
 
         if self.dry_run:
-            print(json.dumps({"dry_run": True, "steps": len(self.steps), "allow_hosts": sorted(self.allowed_hosts)}, ensure_ascii=False))
+            print(json.dumps({
+                "dry_run": True,
+                "steps": len(self.steps),
+                "allow_hosts": sorted(self.allowed_hosts),
+                "resource_hosts": sorted(self.resource_hosts),
+            }, ensure_ascii=False))
             return
 
         self.root.mkdir(parents=True, exist_ok=True)
@@ -164,7 +187,7 @@ def main() -> int:
         config = json.loads(args.config.read_text(encoding="utf-8"))
         BrowserRunner(config, dry_run=args.dry_run).run()
         return 0
-    except (OSError, json.JSONDecodeError, KeyError, ValueError, BrowserRunnerError) as exc:
+    except (OSError, json.JSONDecodeError, KeyError, ValueError, BrowserRunnerError, PlaywrightError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 
