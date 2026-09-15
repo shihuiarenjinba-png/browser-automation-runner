@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.env.*
+browser-work/
+credentials*.json
+client_secret*.json
+token*.json
+playwright-report/
