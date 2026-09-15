@@ -1,0 +1,11 @@
+{
+  "root_dir": "./browser-work",
+  "headless": true,
+  "timeout_ms": 30000,
+  "allow_hosts": ["example.com"],
+  "steps": [
+    {"action": "goto", "url": "https://example.com"},
+    {"action": "wait_for", "selector": "h1", "state": "visible"},
+    {"action": "screenshot", "path": "screenshots/example.png", "full_page": true}
+  ]
+}
