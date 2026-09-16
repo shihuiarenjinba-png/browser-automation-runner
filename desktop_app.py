@@ -4,11 +4,12 @@ import contextlib
 import io
 import json
 import threading
+import urllib.parse
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-from browser_runner import BrowserRunner, BrowserRunnerError, PlaywrightError
+from browser_runner import BrowserRunner, BrowserRunnerError
 
 
 class BrowserAutomationDesktop:
@@ -95,6 +96,17 @@ class BrowserAutomationDesktop:
                 messagebox.showerror("Configuration", str(exc))
             return False
 
+    @staticmethod
+    def _safe_url_preview(raw_url: str) -> str:
+        try:
+            parsed = urllib.parse.urlparse(raw_url)
+            host = parsed.hostname or ""
+            port = f":{parsed.port}" if parsed.port else ""
+            path = parsed.path or "/"
+            return f"{parsed.scheme}://{host}{port}{path}"
+        except Exception:
+            return "(URL hidden / URL非表示)"
+
     def _render(self, runner: BrowserRunner) -> None:
         for item in self.summary.get_children():
             self.summary.delete(item)
@@ -111,9 +123,9 @@ class BrowserAutomationDesktop:
         for index, step in enumerate(runner.steps, start=1):
             if isinstance(step, dict):
                 action = step.get("action", "?")
-                # Do not show fill values or other potentially sensitive payloads.
+                # Never show fill values, query strings, fragments, or URL credentials.
                 if action == "goto":
-                    detail = str(step.get("url", ""))
+                    detail = self._safe_url_preview(str(step.get("url", "")))
                 elif action in {"screenshot", "download"}:
                     detail = str(step.get("path") or step.get("save_as") or "")
                 else:
