@@ -34,12 +34,14 @@ class BrowserRunner:
         self.config = resolve_env(config)
         self.dry_run = dry_run
         self.root = Path(self.config.get("root_dir", ".")).expanduser().resolve()
-        self.allowed_hosts = {str(x).lower() for x in self.config.get("allow_hosts", [])}
-        self.resource_hosts = {str(x).lower() for x in self.config.get("resource_hosts", [])}
+        self.allowed_hosts = {str(x).strip().lower() for x in self.config.get("allow_hosts", []) if str(x).strip()}
+        self.resource_hosts = {str(x).strip().lower() for x in self.config.get("resource_hosts", []) if str(x).strip()}
         self.network_hosts = self.allowed_hosts | self.resource_hosts
         self.steps = self.config.get("steps", [])
         self.headless = bool(self.config.get("headless", True))
         self.timeout_ms = int(self.config.get("timeout_ms", 30_000))
+        if not 1_000 <= self.timeout_ms <= 120_000:
+            raise BrowserRunnerError("timeout_ms must be between 1000 and 120000")
         if not self.allowed_hosts:
             raise BrowserRunnerError("allow_hosts must not be empty")
         if not isinstance(self.steps, list) or not self.steps:
@@ -70,19 +72,39 @@ class BrowserRunner:
             return
         parsed = urllib.parse.urlparse(url)
         host = (parsed.hostname or "").lower()
+        if parsed.username or parsed.password:
+            raise BrowserRunnerError("Credentials in navigation URL are not allowed")
         if parsed.scheme != "https":
             raise BrowserRunnerError(f"Only HTTPS navigation is allowed: {url}")
         if host not in self.allowed_hosts:
             raise BrowserRunnerError(f"Top-level host is not allowed: {host}")
 
     def _route_guard(self, route: Route) -> None:
-        parsed = urllib.parse.urlparse(route.request.url)
+        request = route.request
+        url = request.url
+        parsed = urllib.parse.urlparse(url)
+
+        # Every navigation request, including popup and iframe navigations, is
+        # restricted to allow_hosts. resource_hosts are subresources only.
+        if request.is_navigation_request():
+            if url == "about:blank":
+                route.continue_()
+                return
+            host = (parsed.hostname or "").lower()
+            if parsed.username or parsed.password or parsed.scheme != "https" or host not in self.allowed_hosts:
+                route.abort(error_code="blockedbyclient")
+                return
+            route.continue_()
+            return
+
+        # Non-navigation resources may additionally use explicitly-approved
+        # resource hosts. data/blob/about are allowed only as subresources.
         if parsed.scheme in {"about", "data", "blob"}:
             route.continue_()
             return
         host = (parsed.hostname or "").lower()
-        if parsed.scheme != "https" or host not in self.network_hosts:
-            route.abort()
+        if parsed.username or parsed.password or parsed.scheme != "https" or host not in self.network_hosts:
+            route.abort(error_code="blockedbyclient")
             return
         route.continue_()
 
@@ -93,6 +115,12 @@ class BrowserRunner:
             raise BrowserRunnerError(f"Unsupported action: {action}")
         if action == "goto":
             self._assert_allowed_url(str(step["url"]))
+        if action in {"fill", "click", "wait_for", "select_option", "check", "uncheck", "download"}:
+            selector = step.get("selector")
+            if not isinstance(selector, str) or not selector.strip():
+                raise BrowserRunnerError(f"{action} requires a non-empty selector")
+        if action == "select_option" and "value" not in step:
+            raise BrowserRunnerError("select_option requires value")
         if action == "screenshot":
             self._path(str(step["path"]))
         if action == "download":
@@ -140,11 +168,23 @@ class BrowserRunner:
             overwrite = bool(step.get("overwrite", False))
             self._check_output(path, overwrite)
             path.parent.mkdir(parents=True, exist_ok=True)
-            if path.exists() and overwrite:
-                path.unlink()
-            with page.expect_download() as download_info:
-                page.locator(selector).click()
-            download_info.value.save_as(str(path))
+            temp = path.with_name(path.name + ".download.tmp")
+            temp.unlink(missing_ok=True)
+            try:
+                with page.expect_download() as download_info:
+                    page.locator(selector).click()
+                download = download_info.value
+                failure = download.failure()
+                if failure:
+                    raise BrowserRunnerError(f"Download failed: {failure}")
+                download.save_as(str(temp))
+                if not temp.is_file():
+                    raise BrowserRunnerError("Download did not produce a file")
+                if path.exists() and overwrite:
+                    path.unlink()
+                os.replace(temp, path)
+            finally:
+                temp.unlink(missing_ok=True)
             self._assert_allowed_url(page.url)
 
     def run(self) -> None:
@@ -165,7 +205,9 @@ class BrowserRunner:
         self.root.mkdir(parents=True, exist_ok=True)
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=self.headless)
-            context: BrowserContext = browser.new_context(accept_downloads=True)
+            # Blocking service workers ensures context.route sees outbound HTTP(S)
+            # traffic rather than allowing a service worker to bypass the guard.
+            context: BrowserContext = browser.new_context(accept_downloads=True, service_workers="block")
             context.set_default_timeout(self.timeout_ms)
             context.route("**/*", self._route_guard)
             page = context.new_page()
