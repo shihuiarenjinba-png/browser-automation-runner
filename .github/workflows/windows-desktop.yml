@@ -1,0 +1,28 @@
+name: Windows desktop code build
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [hardening/reliability-v1]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build guarded desktop code package
+        shell: powershell
+        run: powershell -ExecutionPolicy Bypass -File .\build_windows.ps1
+      - name: Upload development EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-automation-runner-code-exe
+          path: dist/BrowserAutomationRunner.exe
+
+# This artifact is not a sales-ready browser distribution by itself.
+# SALES_RELEASE_CHECKLIST.md still requires validated Playwright/Chromium packaging
+# plus controlled Windows browser smoke tests.
