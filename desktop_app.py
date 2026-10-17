@@ -24,8 +24,9 @@ class BrowserAutomationDesktop:
         self.config_path = tk.StringVar()
         self.status = tk.StringVar(value="")
         self.config: dict | None = None
+        self._live_running = False
         self._build()
-        default = Path(__file__).resolve().parent / "browser.example.json"
+        default = Path(__file__).resolve().parent / "workflow.example.json"
         if default.is_file():
             self.config_path.set(str(default))
             self._load_config(False)
@@ -101,6 +102,9 @@ class BrowserAutomationDesktop:
         self.log = tk.Text(logbox, wrap="word", height=10, state="disabled", font=("Consolas", 9))
         self.log.pack(fill="both", expand=True)
         ttk.Label(outer, textvariable=self.status).pack(fill="x", pady=(8, 0))
+        if self._live_running:
+            self.dry_btn.configure(state="disabled")
+            self.run_btn.configure(state="disabled")
 
     def _language_changed(self, _event=None) -> None:
         self.lang = "en" if self.language_var.get() == "English" else "ja"
@@ -113,7 +117,7 @@ class BrowserAutomationDesktop:
                 self._render(runner)
             except Exception:
                 pass
-        self.status.set(self.t("APIが無い場合の最終手段", "Advanced fallback only"))
+        self.status.set(self.t("ブラウザ実行中…", "Browser running…") if self._live_running else self.t("APIが無い場合の最終手段", "Advanced fallback only"))
 
     def _browse(self) -> None:
         path = filedialog.askopenfilename(
@@ -189,7 +193,7 @@ class BrowserAutomationDesktop:
         self.log.configure(state="disabled")
 
     def _dry_run(self) -> None:
-        if not self._load_config(True):
+        if self._live_running or not self._load_config(True):
             return
         self._append(self.t(
             "Dry Run OK — 設定と通信境界のみ検証しました。ブラウザ操作は実行していません。",
@@ -197,7 +201,7 @@ class BrowserAutomationDesktop:
         ))
 
     def _run_live(self) -> None:
-        if not self._load_config(True):
+        if self._live_running or not self._load_config(True):
             return
         warning = self.t(
             "ブラウザを実際に操作します。クリック、入力、ダウンロード等が実行され、Webサービス側に副作用が発生する可能性があります。\n\nAPIで代替できないこと、Dry Run、対象アカウントを確認済みの場合だけ続行してください。",
@@ -207,6 +211,7 @@ class BrowserAutomationDesktop:
             return
         assert self.config is not None
         raw = self.config
+        self._live_running = True
         self.dry_btn.configure(state="disabled")
         self.run_btn.configure(state="disabled")
         self.status.set(self.t("ブラウザ実行中…", "Browser running…"))
@@ -224,6 +229,7 @@ class BrowserAutomationDesktop:
         threading.Thread(target=worker, daemon=True).start()
 
     def _finish(self, ok: bool, text: str) -> None:
+        self._live_running = False
         self._append(text)
         self.dry_btn.configure(state="normal")
         self.run_btn.configure(state="normal")
