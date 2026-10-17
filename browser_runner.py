@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import sys
+import tempfile
 import urllib.parse
 from pathlib import Path
 from typing import Any
@@ -66,6 +67,24 @@ class BrowserRunner:
             raise BrowserRunnerError(f"Output path is a directory: {path}")
         if not overwrite:
             raise BrowserRunnerError(f"Output already exists and overwrite=false: {path}")
+
+    @staticmethod
+    def _publish_output(temp: Path, target: Path, overwrite: bool) -> None:
+        """Publish a fully written file without violating overwrite=false."""
+        if overwrite:
+            # os.replace is atomic on a single filesystem; no unlink gap.
+            os.replace(temp, target)
+        else:
+            # Exclusive hard-link creation is atomic. A concurrent writer can
+            # create target after the initial preview; it must win without
+            # losing any of its content.
+            try:
+                os.link(temp, target)
+            except FileExistsError as exc:
+                raise BrowserRunnerError(
+                    f"Output appeared during save and overwrite=false: {target}"
+                ) from exc
+            temp.unlink()
 
     def _assert_allowed_url(self, url: str) -> None:
         if url == "about:blank":
@@ -161,15 +180,25 @@ class BrowserRunner:
             overwrite = bool(step.get("overwrite", False))
             self._check_output(path, overwrite)
             path.parent.mkdir(parents=True, exist_ok=True)
-            page.screenshot(path=str(path), full_page=bool(step.get("full_page", False)))
+            fd, name = tempfile.mkstemp(prefix=".browser-shot-", suffix=path.suffix or ".png", dir=path.parent)
+            os.close(fd)
+            temp = Path(name)
+            try:
+                page.screenshot(path=str(temp), full_page=bool(step.get("full_page", False)))
+                if not temp.is_file():
+                    raise BrowserRunnerError("Screenshot did not produce a file")
+                self._publish_output(temp, path, overwrite)
+            finally:
+                temp.unlink(missing_ok=True)
 
         elif action == "download":
             path = self._path(str(step["save_as"]))
             overwrite = bool(step.get("overwrite", False))
             self._check_output(path, overwrite)
             path.parent.mkdir(parents=True, exist_ok=True)
-            temp = path.with_name(path.name + ".download.tmp")
-            temp.unlink(missing_ok=True)
+            fd, name = tempfile.mkstemp(prefix=".browser-download-", suffix=".tmp", dir=path.parent)
+            os.close(fd)
+            temp = Path(name)
             try:
                 with page.expect_download() as download_info:
                     page.locator(selector).click()
@@ -180,9 +209,7 @@ class BrowserRunner:
                 download.save_as(str(temp))
                 if not temp.is_file():
                     raise BrowserRunnerError("Download did not produce a file")
-                if path.exists() and overwrite:
-                    path.unlink()
-                os.replace(temp, path)
+                self._publish_output(temp, path, overwrite)
             finally:
                 temp.unlink(missing_ok=True)
             self._assert_allowed_url(page.url)
