@@ -69,6 +69,37 @@ class GuidedBrowserSetupTests(unittest.TestCase):
             save_new_config(file, self.make())
         self.assertEqual(file.read_text(encoding="utf-8"), "precious customer config")
 
+    def test_offline_chromium_check_does_not_launch_browser(self):
+        from types import SimpleNamespace
+        exe = self.root / "chrome.exe"
+        exe.write_bytes(b"fixture")
+        app = BrowserAutomationDesktop.__new__(BrowserAutomationDesktop)
+        app._live_running = False
+        app.root = None
+        app.t = lambda ja,en: en
+        with patch("playwright.sync_api.sync_playwright") as playwright, \
+             patch("desktop_app.messagebox.showinfo") as found, \
+             patch("desktop_app.messagebox.showwarning") as missing:
+            playwright.return_value.__enter__.return_value.chromium.executable_path = str(exe)
+            app._check_browser_runtime()
+        found.assert_called_once()
+        missing.assert_not_called()
+        playwright.return_value.__enter__.return_value.chromium.launch.assert_not_called()
+
+    def test_missing_chromium_is_explained_without_downloading(self):
+        app = BrowserAutomationDesktop.__new__(BrowserAutomationDesktop)
+        app._live_running = False
+        app.root = None
+        app.t = lambda ja,en: en
+        with patch("playwright.sync_api.sync_playwright") as playwright, \
+             patch("desktop_app.messagebox.showwarning") as warn:
+            playwright.return_value.__enter__.return_value.chromium.executable_path = str(
+                self.root / "nonexistent-chromium.exe"
+            )
+            app._check_browser_runtime()
+        warn.assert_called_once()
+        playwright.return_value.__enter__.return_value.chromium.launch.assert_not_called()
+
     def test_gui_wizard_only_saves_config(self):
         app = BrowserAutomationDesktop.__new__(BrowserAutomationDesktop)
         app._live_running = False
