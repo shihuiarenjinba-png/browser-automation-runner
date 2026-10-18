@@ -70,3 +70,19 @@ python browser_runner.py workflow.example.json
 
 注: 同一ディレクトリでの `os.link` による上書き禁止の排他公開を使用します。ファイルシステムが対応しない場合は上書きせず失敗する設計です。WindowsのNTFS・OneDrive同期フォルダー・ネットワーク共有など、実際の販売対象環境での動作確認は未完了です。GitHub Actionsの緑判定、Playwright実ブラウザ試験、MSIX実機試験が完了するまでは販売HOLDです。
 
+## Beginner guidance and single-use preview (2026-10-18, unverified draft)
+
+The desktop explains the practical flow: choose the workflow JSON, validate
+the hosts/actions via Dry Run, then confirm browser execution. **Dry Run
+does not navigate a real website**. It is only structural and network
+allowlist validation.
+
+Live browser execution requires the same JSON content **and path** that passed
+Dry Run. Approval is consumed before browser startup, and changing the
+workflow invalidates it. Language and file selection changes are blocked
+during live execution. This is a GUI gate, not a sandbox against unsafe
+websites, and not a statement that Chromium is packaged correctly.
+
+GitHub Actions jobs are currently failing before any steps execute; see
+`QA_HANDOFF_20261018.md`. Source QA, browser runtime packaging, and
+interactive Windows acceptance remain **HOLD**.
