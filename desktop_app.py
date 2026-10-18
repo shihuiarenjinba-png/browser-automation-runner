@@ -164,6 +164,10 @@ class BrowserAutomationDesktop:
                    command=self._create_guided_config).pack(anchor="w", pady=(0, 10))
         ttk.Button(pane, text=self.t("既存JSONを使う（詳細画面へ）", "Use existing JSON (advanced)"),
                    command=lambda: self.notebook.select(self.advanced_tab)).pack(anchor="w")
+        ttk.Button(
+            pane, text=self.t("ブラウザ実行環境を確認（通信なし）", "Check Chromium availability (offline)"),
+            command=self._check_browser_runtime,
+        ).pack(anchor="w", pady=(9, 0))
         ttk.Label(pane, text=self.t(
             "注意：この簡単設定ではクリックやログインは自動化しません。\n"
             "高度な操作は詳細JSONで設定します。外部サイトの利用規約と権限を守ってください。",
@@ -185,6 +189,33 @@ class BrowserAutomationDesktop:
                 self._render(runner)
             except (OSError, ValueError, BrowserRunnerError):
                 pass
+
+    def _check_browser_runtime(self) -> None:
+        if self._live_running:
+            return
+        try:
+            from playwright.sync_api import sync_playwright
+            with sync_playwright() as client:
+                installed = Path(client.chromium.executable_path).is_file()
+            if installed:
+                messagebox.showinfo(
+                    self.t("ブラウザ環境", "Browser runtime"),
+                    self.t("Chromium実行ファイルを確認しました。実際の起動確認は別途必要です。",
+                           "Chromium executable found. Actual browser startup has not yet been tested."),
+                    parent=self.root,
+                )
+            else:
+                messagebox.showwarning(
+                    self.t("Chromiumが見つかりません", "Chromium is missing"),
+                    self.t("ブラウザ実行ファイルが見つかりません。製品パッケージを確認してください。",
+                           "Chromium executable is missing. Verify the product package."),
+                    parent=self.root,
+                )
+        except Exception as exc:
+            messagebox.showerror(
+                self.t("環境確認失敗", "Runtime check failed"),
+                f"{type(exc).__name__}: {exc}", parent=self.root,
+            )
 
     def _choose_guide_root(self) -> None:
         if self._live_running:
