@@ -50,8 +50,12 @@ def make_screenshot_workflow(*, root_dir: str, url: str, filename: str) -> dict:
     filename = str(filename).strip()
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,90}\.png", filename, re.IGNORECASE):
         raise GuidedConfigError("Use a safe .png file name, e.g. capture.png")
-    if filename.startswith(".") or filename.lower() in {"con.png", "prn.png", "aux.png", "nul.png"}:
-        raise GuidedConfigError("This output file name is reserved")
+    device = filename.split(".", 1)[0].lower()
+    reserved = {"con", "prn", "aux", "nul"} | {
+        f"{prefix}{number}" for prefix in ("com", "lpt") for number in range(1, 10)
+    }
+    if filename.startswith(".") or device in reserved:
+        raise GuidedConfigError("This output file name is reserved on Windows")
     return {
         "root_dir": str(root.resolve()),
         "headless": True,
