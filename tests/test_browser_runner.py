@@ -75,6 +75,25 @@ class BrowserRunnerTests(unittest.TestCase):
             r._route_guard(route)  # type: ignore[arg-type]
             self.assertEqual(route.action, "continue")
 
+    def test_sensitive_urls_are_denied_before_browser_side_effects(self) -> None:
+        rejected = ("https://app.example/?token=abc",
+                    "https://user:pass@app.example/",
+                    "https://app.example:444/",
+                    "https://app.example/#secret")
+        with tempfile.TemporaryDirectory() as tmp:
+            r = runner(Path(tmp))
+            for url in rejected:
+                with self.subTest(url=url):
+                    with self.assertRaisesRegex(BrowserRunnerError, "approved HTTPS"):
+                        r._assert_allowed_url(url)
+                    for navigation in (True, False):
+                        route = FakeRoute(url, navigation)
+                        r._route_guard(route)
+                        self.assertEqual(route.action, "abort")
+            good = FakeRoute("https://app.example/?page=2", True)
+            r._route_guard(good)
+            self.assertEqual(good.action, "continue")
+
     def test_empty_selector_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             r = runner(Path(tmp))
