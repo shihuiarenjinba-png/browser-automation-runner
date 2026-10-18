@@ -14,6 +14,7 @@ class BrowserWindow(ttk.Frame):
         self.pack(fill="both", expand=True)
         self.root_dir = tk.StringVar(value=str(Path.home() / "BrowserAutomation"))
         self.hosts = tk.StringVar(value="example.com")
+        self.resources = tk.StringVar()
         self.action = tk.StringVar(value="goto")
         self.target = tk.StringVar(value="https://example.com")
         self.value = tk.StringVar()
@@ -21,29 +22,31 @@ class BrowserWindow(ttk.Frame):
         self.steps = []
         self.columnconfigure(1, weight=1)
         for row, (label, var) in enumerate(
-            (("Working directory", self.root_dir), ("Allowed hosts (comma separated)", self.hosts))
+            (("Working directory", self.root_dir),
+             ("Allowed hosts (comma separated)", self.hosts),
+             ("Additional resource hosts", self.resources))
         ):
             ttk.Label(self, text=label).grid(row=row, column=0, sticky="w")
             ttk.Entry(self, textvariable=var).grid(row=row, column=1, sticky="ew", pady=4)
         ttk.Button(self, text="Browse", command=self.browse).grid(row=0, column=2)
         ttk.Combobox(self, textvariable=self.action, state="readonly",
                      values=("goto", "fill", "click", "wait_for", "select_option",
-                             "check", "uncheck", "screenshot", "download")).grid(row=2, column=0)
-        ttk.Entry(self, textvariable=self.target).grid(row=2, column=1, sticky="ew")
-        ttk.Entry(self, textvariable=self.value, width=24).grid(row=2, column=2)
+                             "check", "uncheck", "screenshot", "download")).grid(row=3, column=0)
+        ttk.Entry(self, textvariable=self.target).grid(row=3, column=1, sticky="ew")
+        ttk.Entry(self, textvariable=self.value, width=24).grid(row=3, column=2)
         ttk.Label(self, text="URL / selector / screenshot path       Value / download path",
-                  wraplength=800).grid(row=3, column=0, columnspan=3, sticky="w")
-        ttk.Button(self, text="Add action", command=self.add).grid(row=4, column=0)
-        ttk.Button(self, text="Delete selected", command=self.delete).grid(row=4, column=1, sticky="w")
+                  wraplength=800).grid(row=4, column=0, columnspan=3, sticky="w")
+        ttk.Button(self, text="Add action", command=self.add).grid(row=5, column=0)
+        ttk.Button(self, text="Delete selected", command=self.delete).grid(row=5, column=1, sticky="w")
         self.items = tk.Listbox(self, height=10, exportselection=False)
-        self.items.grid(row=5, column=0, columnspan=3, sticky="nsew")
+        self.items.grid(row=6, column=0, columnspan=3, sticky="nsew")
         self.rowconfigure(5, weight=1)
         controls = ttk.Frame(self)
-        controls.grid(row=6, column=0, columnspan=3, sticky="w", pady=8)
+        controls.grid(row=7, column=0, columnspan=3, sticky="w", pady=8)
         for title, fn in (("Load", self.load), ("Save", self.save),
                           ("Preview", self.preview), ("Run once", self.run_once)):
             ttk.Button(controls, text=title, command=fn).pack(side="left", padx=4)
-        ttk.Label(self, textvariable=self.status).grid(row=7, column=0, columnspan=3, sticky="w")
+        ttk.Label(self, textvariable=self.status).grid(row=8, column=0, columnspan=3, sticky="w")
 
     def browse(self):
         folder = filedialog.askdirectory()
@@ -69,7 +72,7 @@ class BrowserWindow(ttk.Frame):
             self.refresh()
 
     def config(self):
-        cfg = make_config(self.root_dir.get(), self.hosts.get(), self.steps)
+        cfg = make_config(self.root_dir.get(), self.hosts.get(), self.steps, self.resources.get())
         BrowserRunner(cfg, dry_run=True).run()
         return cfg
 
@@ -97,10 +100,12 @@ class BrowserWindow(ttk.Frame):
             return
         try:
             data = json.loads(Path(path).read_text(encoding="utf-8"))
-            cfg = make_config(data["root_dir"], ",".join(data["allow_hosts"]), data["steps"])
+            cfg = make_config(data["root_dir"], ",".join(data["allow_hosts"]),
+                              data["steps"], ",".join(data.get("resource_hosts", [])))
             BrowserRunner(cfg, dry_run=True).run()
             self.root_dir.set(cfg["root_dir"])
             self.hosts.set(",".join(cfg["allow_hosts"]))
+            self.resources.set(",".join(cfg["resource_hosts"]))
             self.steps = list(cfg["steps"])
             self.refresh()
         except Exception as exc:
