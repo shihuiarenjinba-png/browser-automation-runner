@@ -31,7 +31,8 @@ def build_extra_step(*, action: str, selector: str, value: str = "", filename: s
         filename = str(filename).strip()
         if not _NAME.fullmatch(filename) or filename.endswith(".") or ".." in filename:
             raise GuidedConfigError("Choose a simple new filename without path separators")
-        if filename.lower().split(".")[0] in {"con", "prn", "aux", "nul"}:
+        stem = filename.lower().split(".")[0]
+        if stem in {"con", "prn", "aux", "nul"} or re.fullmatch(r"(com|lpt)[1-9]", stem):
             raise GuidedConfigError("Reserved Windows output name")
         step.update({"save_as": "downloads/" + filename, "overwrite": False})
     return step
@@ -47,6 +48,10 @@ def build_nocode_workflow(*, root_dir: str, url: str, screenshot: str,
     for step in additional_steps:
         if not isinstance(step, dict):
             raise GuidedConfigError("Each step must be an object")
+        if step.get("action") == "download":
+            relative = str(step.get("save_as", ""))
+            if not relative.startswith("downloads/") or "/" in relative[len("downloads/"):] or "\\" in relative:
+                raise GuidedConfigError("Downloads must use a simple path under downloads/")
         validated.append(build_extra_step(
             action=step.get("action", ""), selector=step.get("selector", ""),
             value=step.get("value", ""),
