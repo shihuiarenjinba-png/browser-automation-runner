@@ -4,6 +4,8 @@ import contextlib
 import hashlib
 import io
 import json
+import os
+import sys
 import threading
 import urllib.parse
 from pathlib import Path
@@ -145,10 +147,10 @@ class BrowserAutomationDesktop:
         self.guide_language.bind("<<ComboboxSelected>>", self._guide_language_changed)
         ttk.Label(pane, text=self.t(
             "決めたWebページを開き、クリック・入力・画像保存などの手順を自動実行する上級者向けのWindowsアプリです。\n"
-            "まずは安全な「指定ページを開いてスクリーンショットを保存」の2手順だけを作れます。\n"
+            "簡易設定でページ画像を保存できます。さらに「操作手順を作る」タブでクリック・入力・ダウンロード等を追加できます。\n"
             "Webサイトの操作画面が変わると失敗する場合があります。APIが利用できる場合はAPIを優先してください。",
             "Automate predefined website steps such as navigation, clicking, form entry, and screenshots.\n"
-            "This guided setup creates only two steps: visit one URL and save a screenshot.\n"
+            "Start with a page capture, then use Build steps to add click, fill and download actions.\n"
             "Website UI changes can break workflows. Prefer official APIs whenever available.",
         ), wraplength=870, justify="left").pack(anchor="w", pady=(0, 14))
         fields = ttk.LabelFrame(pane, text=self.t("① 作成する操作を指定", "1. Set up a page capture"), padding=12)
@@ -182,10 +184,10 @@ class BrowserAutomationDesktop:
             command=self._check_browser_runtime,
         ).pack(anchor="w", pady=(9, 0))
         ttk.Label(pane, text=self.t(
-            "注意：この簡単設定ではクリックやログインは自動化しません。\n"
-            "高度な操作は詳細JSONで設定します。外部サイトの利用規約と権限を守ってください。",
-            "This starter workflow never clicks forms or logs in. Advanced actions require editing JSON.\n"
-            "Use only sites and accounts you are authorized to automate.",
+            "注意：この「画像を保存」ボタンだけではクリック・ログインを実行しません。\n"
+            "操作手順タブではクリック・入力・保存を設定できます。複雑な認証は高度な設定が必要です。",
+            "This capture-only button never clicks forms or logs in. The Build steps tab supports explicit input, clicks and downloads.\n"
+            "Use only websites and accounts you are authorized to automate.",
         ), wraplength=870, justify="left").pack(anchor="w", pady=(16, 0))
 
     def _guide_language_changed(self, _event=None) -> None:
@@ -208,6 +210,16 @@ class BrowserAutomationDesktop:
             return
         try:
             from playwright.sync_api import sync_playwright
+            if getattr(sys, "frozen", False):
+                bundled = Path(sys.executable).resolve().parent / "pw-browsers"
+                if not bundled.is_dir():
+                    messagebox.showwarning(
+                        self.t("Chromiumが見つかりません", "Chromium is missing"),
+                        self.t("同梱Chromiumがありません。Windows用パッケージを確認してください。",
+                               "Bundled Chromium is missing; check the installed package."),
+                        parent=self.root)
+                    return
+                os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(bundled)
             with sync_playwright() as client:
                 installed = Path(client.chromium.executable_path).is_file()
             if installed:
