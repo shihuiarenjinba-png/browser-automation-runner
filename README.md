@@ -38,3 +38,7 @@ python browser_runner.py workflow.example.json
 ## 注意
 
 ブラウザ自動化はWeb UI変更の影響を受けます。Google/Blogger等、公式APIがあるサービスはこのRepoではなくAPI Connectorを優先します。
+
+## Visual action editor (improvement branch)
+
+Install `requirements.txt` plus `python -m playwright install chromium` for local development, then run `python browser_gui.py`. The GUI configures approved HTTPS/resource hosts, adds or removes deterministic browser actions, loads and saves JSON without overwriting existing files, validates with an offline Dry Run and asks for confirmation before a real browser run. It is **not** an AI agent. Never enter a real password into a plain saved JSON workflow; use supported environment-variable references. The separately maintained `feat/browser-no-code-steps-20261018` branch has a more complete desktop editor and browser packaging work. Inspect its full regressions and merge plan before release. A packaged Chromium executable, GUI QA and MSIX validation are not yet proven on this branch. Store submission: **HOLD**.
