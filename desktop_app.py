@@ -11,6 +11,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 from browser_runner import BrowserRunner, BrowserRunnerError
+from guided_config import GuidedConfigError, make_screenshot_workflow, save_new_config
 from ui_language import load_language, save_language
 
 APP_ID = "browser-automation-runner"
@@ -23,6 +24,9 @@ class BrowserAutomationDesktop:
         self.root.geometry("1020x740")
         self.root.minsize(880, 640)
         self.config_path = tk.StringVar()
+        self.guide_root = tk.StringVar()
+        self.guide_url = tk.StringVar(value="https://example.com")
+        self.guide_output = tk.StringVar(value="page.png")
         self.status = tk.StringVar(value="")
         self.config: dict | None = None
         self._live_running = False
@@ -43,7 +47,14 @@ class BrowserAutomationDesktop:
             child.destroy()
         self.root.title(self.t("ブラウザ自動化 — 上級", "Browser Automation Runner — Advanced"))
 
-        outer = ttk.Frame(self.root, padding=18)
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(fill="both", expand=True)
+        self.guide_tab = ttk.Frame(self.notebook)
+        self.advanced_tab = ttk.Frame(self.notebook)
+        self.notebook.add(self.guide_tab, text=self.t("はじめに・新規設定", "Start here / New setup"))
+        self.notebook.add(self.advanced_tab, text=self.t("詳細・試運転・実行", "Advanced / Preview / Run"))
+        self._build_guide()
+        outer = ttk.Frame(self.advanced_tab, padding=18)
         outer.pack(fill="both", expand=True)
 
         language = ttk.Frame(outer)
@@ -108,13 +119,120 @@ class BrowserAutomationDesktop:
             self.dry_btn.configure(state="disabled")
             self.run_btn.configure(state="disabled")
 
+    def _build_guide(self) -> None:
+        pane = ttk.Frame(self.guide_tab, padding=20)
+        pane.pack(fill="both", expand=True)
+        banner = ttk.Frame(pane)
+        banner.pack(fill="x", pady=(0, 10))
+        ttk.Label(banner, text=self.t("ブラウザ自動化とは？", "What does Browser Automation Runner do?"),
+                  font=("Segoe UI", 18, "bold")).pack(side="left")
+        self.guide_language = ttk.Combobox(
+            banner, values=("日本語", "English"), state="readonly", width=10,
+        )
+        self.guide_language.set("English" if self.lang == "en" else "日本語")
+        self.guide_language.pack(side="right")
+        self.guide_language.bind("<<ComboboxSelected>>", self._guide_language_changed)
+        ttk.Label(pane, text=self.t(
+            "決めたWebページを開き、クリック・入力・画像保存などの手順を自動実行する上級者向けのWindowsアプリです。\\n"
+            "まずは安全な「指定ページを開いてスクリーンショットを保存」の2手順だけを作れます。\\n"
+            "Webサイトの操作画面が変わると失敗する場合があります。APIが利用できる場合はAPIを優先してください。",
+            "Automate predefined website steps such as navigation, clicking, form entry, and screenshots.\\n"
+            "This guided setup creates only two steps: visit one URL and save a screenshot.\\n"
+            "Website UI changes can break workflows. Prefer official APIs whenever available.",
+        ), wraplength=870, justify="left").pack(anchor="w", pady=(0, 14))
+        fields = ttk.LabelFrame(pane, text=self.t("① 作成する操作を指定", "1. Set up a page capture"), padding=12)
+        fields.pack(fill="x", pady=(0, 12))
+        fields.columnconfigure(1, weight=1)
+        for i, (label, var) in enumerate([
+            (self.t("画像の保存用フォルダー", "Local output folder"), self.guide_root),
+            (self.t("開くページのHTTPS URL", "HTTPS page to visit"), self.guide_url),
+            (self.t("画像ファイル名（.png）", "Screenshot filename (.png)"), self.guide_output),
+        ]):
+            ttk.Label(fields, text=label).grid(row=i, column=0, sticky="w", padx=(0, 10), pady=7)
+            ttk.Entry(fields, textvariable=var).grid(row=i, column=1, sticky="ew", pady=7)
+        ttk.Button(fields, text=self.t("選択…", "Browse…"), command=self._choose_guide_root
+                   ).grid(row=0, column=2, padx=(8, 0))
+        ttk.Label(pane, text=self.t(
+            "② JSONとして新規保存（この操作ではブラウザを開きません）。\\n"
+            "③ 次の画面でDry Runで設定を確認 → 実ブラウザ起動を承認するとページを開いて画像を保存します。\\n"
+            "画像が既にあるときは上書きしません。",
+            "2. Save as a new JSON file (this does not open the browser).\\n"
+            "3. On the next screen, Dry Run validates settings. Confirm a real browser run to capture the page.\\n"
+            "Existing screenshots are never overwritten.",
+        ), wraplength=870, justify="left").pack(anchor="w", pady=(4, 12))
+        ttk.Button(pane, text=self.t("新規設定を保存して次へ →", "Save new workflow and continue →"),
+                   command=self._create_guided_config).pack(anchor="w", pady=(0, 10))
+        ttk.Button(pane, text=self.t("既存JSONを使う（詳細画面へ）", "Use existing JSON (advanced)"),
+                   command=lambda: self.notebook.select(self.advanced_tab)).pack(anchor="w")
+        ttk.Label(pane, text=self.t(
+            "注意：この簡単設定ではクリックやログインは自動化しません。\\n"
+            "高度な操作は詳細JSONで設定します。外部サイトの利用規約と権限を守ってください。",
+            "This starter workflow never clicks forms or logs in. Advanced actions require editing JSON.\\n"
+            "Use only sites and accounts you are authorized to automate.",
+        ), wraplength=870, justify="left").pack(anchor="w", pady=(16, 0))
+
+    def _guide_language_changed(self, _event=None) -> None:
+        if self._live_running:
+            self.guide_language.set("English" if self.lang == "en" else "日本語")
+            return
+        self.lang = "en" if self.guide_language.get() == "English" else "ja"
+        save_language(APP_ID, self.lang)
+        self._build()
+        if self.config is not None:
+            try:
+                runner = BrowserRunner(self.config, dry_run=True)
+                runner.run()
+                self._render(runner)
+            except (OSError, ValueError, BrowserRunnerError):
+                pass
+
+    def _choose_guide_root(self) -> None:
+        if self._live_running:
+            return
+        name = filedialog.askdirectory(parent=self.root)
+        if name:
+            self.guide_root.set(name)
+
+    def _create_guided_config(self) -> None:
+        if self._live_running:
+            return
+        try:
+            config = make_screenshot_workflow(
+                root_dir=self.guide_root.get(),
+                url=self.guide_url.get(),
+                filename=self.guide_output.get(),
+            )
+        except (GuidedConfigError, OSError) as exc:
+            messagebox.showerror(self.t("設定内容を確認", "Check your settings"), str(exc), parent=self.root)
+            return
+        filename = filedialog.asksaveasfilename(
+            parent=self.root, defaultextension=".json",
+            filetypes=[("JSON", "*.json")], initialfile="page-capture.json",
+        )
+        if not filename:
+            return
+        try:
+            save_new_config(filename, config)
+        except OSError as exc:
+            messagebox.showerror(self.t("保存できませんでした", "Could not save"), str(exc), parent=self.root)
+            return
+        self.preview_revision = None
+        self.config_path.set(str(filename))
+        self.notebook.select(self.advanced_tab)
+        self._load_config(True)
+        self.status.set(self.t("保存完了。次はDry Runです（ブラウザはまだ開いていません）。",
+                               "Saved. Next: Dry Run (no browser was opened)."))
+
     def _language_changed(self, _event=None) -> None:
         if self._live_running:
             self.language_var.set("English" if self.lang == "en" else "日本語")
             return
+        was_advanced = self.notebook.select() == str(self.advanced_tab)
         self.lang = "en" if self.language_var.get() == "English" else "ja"
         save_language(APP_ID, self.lang)
         self._build()
+        if was_advanced:
+            self.notebook.select(self.advanced_tab)
         if self.config is not None:
             try:
                 runner = BrowserRunner(self.config, dry_run=True)
