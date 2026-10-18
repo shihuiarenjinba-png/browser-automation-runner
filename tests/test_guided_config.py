@@ -56,6 +56,12 @@ class GuidedBrowserSetupTests(unittest.TestCase):
         playwright.assert_not_called()
         self.assertFalse((self.root / "screenshots").exists())
 
+    def test_empty_or_missing_folder_must_be_chosen_explicitly(self):
+        with self.assertRaises(GuidedConfigError):
+            self.make(root_dir="")
+        with self.assertRaises(GuidedConfigError):
+            self.make(root_dir=str(self.root / "missing-folder"))
+
     def test_existing_json_is_never_replaced(self):
         file = self.root / "existing.json"
         file.write_text("precious customer config", encoding="utf-8")
