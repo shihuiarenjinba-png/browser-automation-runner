@@ -58,8 +58,8 @@ class BrowserAutomationDesktop:
         ttk.Label(
             outer,
             text=self.t(
-                "上級機能 — APIやローカル処理で実現できない場合だけ使用してください。Web画面変更で壊れる可能性があります。",
-                "Advanced feature — use only when API/local processing cannot do the job. Website UI changes can break browser automation.",
+                "使い方：①操作JSONを選択 → ②Dry Runで設定・許可ホストを確認（ブラウザ操作なし）→ ③内容を確認して実行。APIで代替できないときだけ利用してください。",
+                "Start here: 1. Choose workflow JSON → 2. Dry Run validates steps and host restrictions (no browser actions) → 3. Review and execute. Use only when an API cannot do the job.",
             ),
             wraplength=900,
         ).pack(anchor="w", pady=(0, 14))
