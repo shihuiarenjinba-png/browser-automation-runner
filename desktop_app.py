@@ -133,11 +133,11 @@ class BrowserAutomationDesktop:
         self.guide_language.pack(side="right")
         self.guide_language.bind("<<ComboboxSelected>>", self._guide_language_changed)
         ttk.Label(pane, text=self.t(
-            "決めたWebページを開き、クリック・入力・画像保存などの手順を自動実行する上級者向けのWindowsアプリです。\\n"
-            "まずは安全な「指定ページを開いてスクリーンショットを保存」の2手順だけを作れます。\\n"
+            "決めたWebページを開き、クリック・入力・画像保存などの手順を自動実行する上級者向けのWindowsアプリです。\n"
+            "まずは安全な「指定ページを開いてスクリーンショットを保存」の2手順だけを作れます。\n"
             "Webサイトの操作画面が変わると失敗する場合があります。APIが利用できる場合はAPIを優先してください。",
-            "Automate predefined website steps such as navigation, clicking, form entry, and screenshots.\\n"
-            "This guided setup creates only two steps: visit one URL and save a screenshot.\\n"
+            "Automate predefined website steps such as navigation, clicking, form entry, and screenshots.\n"
+            "This guided setup creates only two steps: visit one URL and save a screenshot.\n"
             "Website UI changes can break workflows. Prefer official APIs whenever available.",
         ), wraplength=870, justify="left").pack(anchor="w", pady=(0, 14))
         fields = ttk.LabelFrame(pane, text=self.t("① 作成する操作を指定", "1. Set up a page capture"), padding=12)
@@ -153,11 +153,11 @@ class BrowserAutomationDesktop:
         ttk.Button(fields, text=self.t("選択…", "Browse…"), command=self._choose_guide_root
                    ).grid(row=0, column=2, padx=(8, 0))
         ttk.Label(pane, text=self.t(
-            "② JSONとして新規保存（この操作ではブラウザを開きません）。\\n"
-            "③ 次の画面でDry Runで設定を確認 → 実ブラウザ起動を承認するとページを開いて画像を保存します。\\n"
+            "② JSONとして新規保存（この操作ではブラウザを開きません）。\n"
+            "③ 次の画面でDry Runで設定を確認 → 実ブラウザ起動を承認するとページを開いて画像を保存します。\n"
             "画像が既にあるときは上書きしません。",
-            "2. Save as a new JSON file (this does not open the browser).\\n"
-            "3. On the next screen, Dry Run validates settings. Confirm a real browser run to capture the page.\\n"
+            "2. Save as a new JSON file (this does not open the browser).\n"
+            "3. On the next screen, Dry Run validates settings. Confirm a real browser run to capture the page.\n"
             "Existing screenshots are never overwritten.",
         ), wraplength=870, justify="left").pack(anchor="w", pady=(4, 12))
         ttk.Button(pane, text=self.t("新規設定を保存して次へ →", "Save new workflow and continue →"),
@@ -165,9 +165,9 @@ class BrowserAutomationDesktop:
         ttk.Button(pane, text=self.t("既存JSONを使う（詳細画面へ）", "Use existing JSON (advanced)"),
                    command=lambda: self.notebook.select(self.advanced_tab)).pack(anchor="w")
         ttk.Label(pane, text=self.t(
-            "注意：この簡単設定ではクリックやログインは自動化しません。\\n"
+            "注意：この簡単設定ではクリックやログインは自動化しません。\n"
             "高度な操作は詳細JSONで設定します。外部サイトの利用規約と権限を守ってください。",
-            "This starter workflow never clicks forms or logs in. Advanced actions require editing JSON.\\n"
+            "This starter workflow never clicks forms or logs in. Advanced actions require editing JSON.\n"
             "Use only sites and accounts you are authorized to automate.",
         ), wraplength=870, justify="left").pack(anchor="w", pady=(16, 0))
 
