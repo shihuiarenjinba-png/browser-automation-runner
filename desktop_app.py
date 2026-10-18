@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import io
 import json
 import threading
@@ -25,6 +26,7 @@ class BrowserAutomationDesktop:
         self.status = tk.StringVar(value="")
         self.config: dict | None = None
         self._live_running = False
+        self.preview_revision: str | None = None
         self._build()
         default = Path(__file__).resolve().parent / "workflow.example.json"
         if default.is_file():
@@ -107,6 +109,9 @@ class BrowserAutomationDesktop:
             self.run_btn.configure(state="disabled")
 
     def _language_changed(self, _event=None) -> None:
+        if self._live_running:
+            self.language_var.set("English" if self.lang == "en" else "日本語")
+            return
         self.lang = "en" if self.language_var.get() == "English" else "ja"
         save_language(APP_ID, self.lang)
         self._build()
@@ -120,6 +125,8 @@ class BrowserAutomationDesktop:
         self.status.set(self.t("ブラウザ実行中…", "Browser running…") if self._live_running else self.t("APIが無い場合の最終手段", "Advanced fallback only"))
 
     def _browse(self) -> None:
+        if self._live_running:
+            return
         path = filedialog.askopenfilename(
             title=self.t("ブラウザ自動化JSONを選択", "Choose Browser Automation JSON"),
             filetypes=[("JSON", "*.json"), (self.t("すべてのファイル", "All files"), "*.*")],
@@ -192,9 +199,16 @@ class BrowserAutomationDesktop:
         self.log.see("end")
         self.log.configure(state="disabled")
 
+    def _revision(self, raw: dict) -> str:
+        canonical = json.dumps(raw, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        payload = str(Path(self.config_path.get()).expanduser().resolve()) + "\\n" + canonical
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
     def _dry_run(self) -> None:
         if self._live_running or not self._load_config(True):
             return
+        assert self.config is not None
+        self.preview_revision = self._revision(self.config)
         self._append(self.t(
             "Dry Run OK — 設定と通信境界のみ検証しました。ブラウザ操作は実行していません。",
             "Dry Run OK — configuration/network boundary validated. No browser actions executed.",
@@ -202,6 +216,15 @@ class BrowserAutomationDesktop:
 
     def _run_live(self) -> None:
         if self._live_running or not self._load_config(True):
+            return
+        assert self.config is not None
+        if self.preview_revision != self._revision(self.config):
+            messagebox.showwarning(
+                self.t("試運転が必要", "Dry Run required"),
+                self.t("現在の設定でDry Runを成功させてから実行してください。",
+                       "Run Dry Run successfully with the current configuration first."),
+                parent=self.root,
+            )
             return
         warning = self.t(
             "ブラウザを実際に操作します。クリック、入力、ダウンロード等が実行され、Webサービス側に副作用が発生する可能性があります。\n\nAPIで代替できないこと、Dry Run、対象アカウントを確認済みの場合だけ続行してください。",
@@ -211,6 +234,8 @@ class BrowserAutomationDesktop:
             return
         assert self.config is not None
         raw = self.config
+        # Revoke authorization before side effects, including lost responses.
+        self.preview_revision = None
         self._live_running = True
         self.dry_btn.configure(state="disabled")
         self.run_btn.configure(state="disabled")
