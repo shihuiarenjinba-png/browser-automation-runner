@@ -465,6 +465,20 @@ def self_test() -> int:
             raise RuntimeError("Dry Run unexpectedly wrote an image")
     return 0
 
+def browser_smoke() -> int:
+    """Offline real Chromium launch for isolated Windows packaging acceptance."""
+    import tempfile
+    with tempfile.TemporaryDirectory(prefix="browser-chromium-smoke-") as path:
+        config = {
+            "root_dir": path, "allow_hosts": ["example.com"],
+            "steps": [{"action": "goto", "url": "about:blank"}],
+            "headless": True,
+        }
+        with contextlib.redirect_stdout(io.StringIO()):
+            BrowserRunner(config, dry_run=False).run()
+    return 0
+
+
 def main() -> None:
     root = tk.Tk()
     BrowserAutomationDesktop(root)
@@ -475,4 +489,6 @@ if __name__ == "__main__":
     import sys
     if sys.argv[1:] == ["--self-test"]:
         raise SystemExit(self_test())
+    if sys.argv[1:] == ["--browser-smoke"]:
+        raise SystemExit(browser_smoke())
     main()
