@@ -381,6 +381,19 @@ class BrowserAutomationDesktop:
             messagebox.showerror(self.t("ブラウザ自動化", "Browser Runner"), text[-1500:], parent=self.root)
 
 
+def self_test() -> int:
+    """Validate packaged browser automation code without starting Chromium."""
+    import tempfile
+    with tempfile.TemporaryDirectory(prefix="browser-runner-self-test-") as d:
+        config = make_screenshot_workflow(
+            root_dir=d, url="https://example.com", filename="self-test.png",
+        )
+        with contextlib.redirect_stdout(io.StringIO()):
+            BrowserRunner(config, dry_run=True).run()
+        if (Path(d) / "screenshots").exists():
+            raise RuntimeError("Dry Run unexpectedly wrote an image")
+    return 0
+
 def main() -> None:
     root = tk.Tk()
     BrowserAutomationDesktop(root)
@@ -388,4 +401,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    import sys
+    if sys.argv[1:] == ["--self-test"]:
+        raise SystemExit(self_test())
     main()
