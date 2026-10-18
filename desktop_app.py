@@ -12,6 +12,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from browser_runner import BrowserRunner, BrowserRunnerError
 from guided_config import GuidedConfigError, make_screenshot_workflow, save_new_config
+from step_builder_panel import BrowserStepBuilder
 from ui_language import load_language, save_language
 
 APP_ID = "browser-automation-runner"
@@ -31,6 +32,7 @@ class BrowserAutomationDesktop:
         self.config: dict | None = None
         self._live_running = False
         self.preview_revision: str | None = None
+        self.builder_steps: list[dict] = []
         self._build()
         default = Path(__file__).resolve().parent / "workflow.example.json"
         if default.is_file():
@@ -43,6 +45,8 @@ class BrowserAutomationDesktop:
         return en if self.lang == "en" else ja
 
     def _build(self) -> None:
+        if getattr(self, 'step_builder', None) is not None:
+            self.builder_steps = [dict(x) for x in self.step_builder.steps]
         for child in self.root.winfo_children():
             child.destroy()
         self.root.title(self.t("ブラウザ自動化 — 上級", "Browser Automation Runner — Advanced"))
@@ -50,10 +54,17 @@ class BrowserAutomationDesktop:
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(fill="both", expand=True)
         self.guide_tab = ttk.Frame(self.notebook)
+        self.step_tab = ttk.Frame(self.notebook)
         self.advanced_tab = ttk.Frame(self.notebook)
         self.notebook.add(self.guide_tab, text=self.t("はじめに・新規設定", "Start here / New setup"))
+        self.notebook.add(self.step_tab, text=self.t("操作手順を作る", "Build steps"))
         self.notebook.add(self.advanced_tab, text=self.t("詳細・試運転・実行", "Advanced / Preview / Run"))
         self._build_guide()
+        self.step_builder = BrowserStepBuilder(
+            self.step_tab, translate=self.t, root_var=self.guide_root,
+            url_var=self.guide_url, output_var=self.guide_output,
+            save_callback=self._save_builder_config, initial_steps=self.builder_steps)
+        self.step_builder.pack(fill='both', expand=True)
         outer = ttk.Frame(self.advanced_tab, padding=18)
         outer.pack(fill="both", expand=True)
 
@@ -162,6 +173,8 @@ class BrowserAutomationDesktop:
         ), wraplength=870, justify="left").pack(anchor="w", pady=(4, 12))
         ttk.Button(pane, text=self.t("新規設定を保存して次へ →", "Save new workflow and continue →"),
                    command=self._create_guided_config).pack(anchor="w", pady=(0, 10))
+        ttk.Button(pane, text=self.t("クリック・入力・保存の手順を画面で追加 →", "Build click/fill/download steps →"),
+                   command=lambda: self.notebook.select(self.step_tab)).pack(anchor="w", pady=(0, 10))
         ttk.Button(pane, text=self.t("既存JSONを使う（詳細画面へ）", "Use existing JSON (advanced)"),
                    command=lambda: self.notebook.select(self.advanced_tab)).pack(anchor="w")
         ttk.Button(
@@ -253,6 +266,33 @@ class BrowserAutomationDesktop:
         self._load_config(True)
         self.status.set(self.t("保存完了。次はDry Runです（ブラウザはまだ開いていません）。",
                                "Saved. Next: Dry Run (no browser was opened)."))
+
+    def _save_builder_config(self, config: dict) -> None:
+        if self._live_running:
+            return
+        try:
+            BrowserRunner(config, dry_run=True).run()
+        except (OSError, ValueError, BrowserRunnerError) as exc:
+            messagebox.showerror(self.t("設定エラー", "Validation error"),
+                                 str(exc), parent=self.root)
+            return
+        path = filedialog.asksaveasfilename(
+            parent=self.root, defaultextension=".json",
+            initialfile="browser-steps.json", filetypes=[("JSON", "*.json")])
+        if not path:
+            return
+        try:
+            save_new_config(path, config)
+        except OSError as exc:
+            messagebox.showerror(self.t("保存失敗", "Save failed"), str(exc),
+                                 parent=self.root)
+            return
+        self.preview_revision = None
+        self.config_path.set(str(path))
+        self.notebook.select(self.advanced_tab)
+        self._load_config(True)
+        self.status.set(self.t("保存完了。Dry Runで検証してください（ブラウザ未実行）。",
+                               "Saved. Run Dry Run (browser not launched)."))
 
     def _language_changed(self, _event=None) -> None:
         if self._live_running:
