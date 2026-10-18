@@ -38,3 +38,32 @@ assumption this is ready.
 are recorded and logs are not obtainable. Neither code failure nor PASS has
 been demonstrated. Code operator must investigate account-level Actions
 settings/quota/policy, then run the full matrix and real-browser smoke.
+
+## GUI uplift implemented in code (2026-10-18)
+
+The default tab is now **Start here / New setup** and explains exactly what
+the product can do. The beginner flow is `Choose folder → Enter approved
+HTTPS page URL and screenshot name → Save new JSON → Dry Run (structure only)
+→ Confirm live browser run`. Saving a JSON file itself does not launch
+Chromium or navigate to any website.
+
+The wizard deliberately supports **navigation plus a screenshot only**;
+it is not an interactive visual editor for arbitrary login, click, fill or
+download actions. Those advanced functions still need edited JSON. This
+product is neither an AI browser agent nor a universal API replacement.
+
+`guided_config.py` rejects blank/missing save locations, IP/local hosts,
+HTTP, embedded credentials, query/fragment URLs and invalid filenames.
+It generates an overwrite=false screenshot. It saves new JSON only with
+exclusive file creation. Japanese and English GUI guidance are present.
+
+`tests/test_guided_config.py` covers the offline creation and refusal
+paths. **CI verification remains blocked with 0 executed job steps**, not
+proof of a pass or an application test failure. Operator should run the
+unittest suite on the exact SHA and verify GUI window layout and actual
+Playwright browser operation on an approved test fixture.
+
+Packaging `desktop_app.py` alone does not demonstrate bundling Chromium;
+the clean-PC runtime package and associated notices must be verified.
+Store ID/Publisher are recorded in
+`store/PARTNER_CENTER_IDENTITY_HANDOFF_20261018.md`.
