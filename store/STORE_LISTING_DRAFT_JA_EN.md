@@ -4,7 +4,7 @@
 
 ## 日本語
 
-**製品名（予約済み）:** browser automation runner
+**製品名（予約済み）:** Browser Automation Runner
 
 **短い説明:**
 Webページの指定手順をブラウザで実行するWindowsツール。初心者向け画面からページの画像保存を設定できます。
