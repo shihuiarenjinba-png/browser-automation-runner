@@ -215,6 +215,14 @@ class BrowserRunner:
             self._assert_allowed_url(page.url)
 
     def run(self) -> None:
+        if getattr(sys, "frozen", False):
+            bundled = Path(sys.executable).resolve().parent / "pw-browsers"
+            if not bundled.is_dir():
+                raise BrowserRunnerError(
+                    "Bundled Chromium runtime folder missing beside installed application")
+            # Commercial builds must not silently fall back to an unrelated,
+            # previously installed user's Playwright browser cache.
+            os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(bundled)
         for step in self.steps:
             if not isinstance(step, dict):
                 raise BrowserRunnerError("Each step must be an object")
