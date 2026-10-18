@@ -229,6 +229,14 @@ class BrowserRunner:
             }, ensure_ascii=False))
             return
 
+        if getattr(sys, "frozen", False):
+            bundled = Path(sys.executable).resolve().parent / "pw-browsers"
+            if not bundled.is_dir():
+                raise BrowserRunnerError(
+                    "Bundled Chromium runtime folder missing beside installed application")
+            # Commercial builds must not silently fall back to an unrelated,
+            # previously installed user's Playwright browser cache.
+            os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(bundled)
         self.root.mkdir(parents=True, exist_ok=True)
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=self.headless)

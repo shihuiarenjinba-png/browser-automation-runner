@@ -104,3 +104,29 @@ JSON editing, and moves to Advanced for no-browser Dry Run and explicit live
 approval. Complex actions still require advanced JSON configuration.
 Check `tests/test_guided_config.py` and browser runtime installation on a
 controlled Windows machine before using this as a sales claim.
+
+
+## Browser steps editor and bundled Chromium candidate (2026-10-18 / DRAFT)
+
+The beginner Start Here page now offers a **Build steps** tab. Customers can
+add/edit-order/remove fixed actions (click, fill, wait_for, select_option,
+check, uncheck, download) without hand-editing a workflow JSON. The app builds
+a predefined navigation → up to 20 approved actions → no-overwrite screenshot
+sequence, saves a new JSON without touching an old one, then sends it to
+the existing offline Dry Run and one-time live browser confirmation.
+
+Only the selected HTTPS page host is allowed for navigation; other resource
+hosts, query-bearing URLs, extra navigation and complex login need reviewed
+advanced JSON. Do not paste credentials into ordinary form fields; sensitive
+selectors require environment-variable references. This is **not** AI
+browser automation, and CSS selectors may break on site changes.
+
+The Windows validation builder also stages Playwright's Chromium runtime
+beside the EXE in a fresh output directory and adds an offline about:blank
+browser startup smoke (no external navigation). This is an **unverified**
+build recipe until Windows CI/job steps or code-operator validation run it.
+It is not yet a completed, signed MSIX, nor a verified commercial browser
+license/third-party notice. Do not ship the EXE without its staged runtime.
+
+New tests: tests/test_no_code_steps.py. Source remains in a Draft branch,
+and original main/release/customer data are unchanged.

@@ -17,7 +17,7 @@
 
 ## State of the app code (not the Store registration)
 
-Advanced JSON workflow GUI and dry-run guard added; no beginner flow editor, Chromium clean-PC packaging proof, verified CI, or Store MSIX.
+The draft beginner step builder now adds/edits/reorders click/fill/wait/select/check/download operations without editing JSON. Existing Dry Run/live approval remains. A Chromium-adjacent validation build recipe and offline smoke were authored but not executed. No verified private CI, clean-PC runtime proof or Store MSIX.
 
 ## No-sales acceptance conditions
 

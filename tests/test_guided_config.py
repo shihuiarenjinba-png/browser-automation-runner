@@ -86,6 +86,21 @@ class GuidedBrowserSetupTests(unittest.TestCase):
         missing.assert_not_called()
         playwright.return_value.__enter__.return_value.chromium.launch.assert_not_called()
 
+    def test_frozen_browser_check_does_not_fall_back_to_user_cache(self):
+        import desktop_app
+        app = BrowserAutomationDesktop.__new__(BrowserAutomationDesktop)
+        app._live_running = False
+        app.root = None
+        app.t = lambda ja, en: en
+        exe = str(self.root / "BrowserAutomationRunner.exe")
+        with patch.object(desktop_app.sys, "frozen", True, create=True), \
+             patch.object(desktop_app.sys, "executable", exe), \
+             patch("playwright.sync_api.sync_playwright") as playwright, \
+             patch("desktop_app.messagebox.showwarning") as warn:
+            app._check_browser_runtime()
+        warn.assert_called_once()
+        playwright.assert_not_called()
+
     def test_missing_chromium_is_explained_without_downloading(self):
         app = BrowserAutomationDesktop.__new__(BrowserAutomationDesktop)
         app._live_running = False

@@ -4,6 +4,8 @@ import contextlib
 import hashlib
 import io
 import json
+import os
+import sys
 import threading
 import urllib.parse
 from pathlib import Path
@@ -12,6 +14,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from browser_runner import BrowserRunner, BrowserRunnerError
 from guided_config import GuidedConfigError, make_screenshot_workflow, save_new_config
+from step_builder_panel import BrowserStepBuilder
 from ui_language import load_language, save_language
 
 APP_ID = "browser-automation-runner"
@@ -31,6 +34,7 @@ class BrowserAutomationDesktop:
         self.config: dict | None = None
         self._live_running = False
         self.preview_revision: str | None = None
+        self.builder_steps: list[dict] = []
         self._build()
         default = Path(__file__).resolve().parent / "workflow.example.json"
         if default.is_file():
@@ -43,6 +47,8 @@ class BrowserAutomationDesktop:
         return en if self.lang == "en" else ja
 
     def _build(self) -> None:
+        if getattr(self, 'step_builder', None) is not None:
+            self.builder_steps = [dict(x) for x in self.step_builder.steps]
         for child in self.root.winfo_children():
             child.destroy()
         self.root.title(self.t("ブラウザ自動化 — 上級", "Browser Automation Runner — Advanced"))
@@ -50,10 +56,17 @@ class BrowserAutomationDesktop:
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(fill="both", expand=True)
         self.guide_tab = ttk.Frame(self.notebook)
+        self.step_tab = ttk.Frame(self.notebook)
         self.advanced_tab = ttk.Frame(self.notebook)
         self.notebook.add(self.guide_tab, text=self.t("はじめに・新規設定", "Start here / New setup"))
+        self.notebook.add(self.step_tab, text=self.t("操作手順を作る", "Build steps"))
         self.notebook.add(self.advanced_tab, text=self.t("詳細・試運転・実行", "Advanced / Preview / Run"))
         self._build_guide()
+        self.step_builder = BrowserStepBuilder(
+            self.step_tab, translate=self.t, root_var=self.guide_root,
+            url_var=self.guide_url, output_var=self.guide_output,
+            save_callback=self._save_builder_config, initial_steps=self.builder_steps)
+        self.step_builder.pack(fill='both', expand=True)
         outer = ttk.Frame(self.advanced_tab, padding=18)
         outer.pack(fill="both", expand=True)
 
@@ -134,10 +147,10 @@ class BrowserAutomationDesktop:
         self.guide_language.bind("<<ComboboxSelected>>", self._guide_language_changed)
         ttk.Label(pane, text=self.t(
             "決めたWebページを開き、クリック・入力・画像保存などの手順を自動実行する上級者向けのWindowsアプリです。\n"
-            "まずは安全な「指定ページを開いてスクリーンショットを保存」の2手順だけを作れます。\n"
+            "簡易設定でページ画像を保存できます。さらに「操作手順を作る」タブでクリック・入力・ダウンロード等を追加できます。\n"
             "Webサイトの操作画面が変わると失敗する場合があります。APIが利用できる場合はAPIを優先してください。",
             "Automate predefined website steps such as navigation, clicking, form entry, and screenshots.\n"
-            "This guided setup creates only two steps: visit one URL and save a screenshot.\n"
+            "Start with a page capture, then use Build steps to add click, fill and download actions.\n"
             "Website UI changes can break workflows. Prefer official APIs whenever available.",
         ), wraplength=870, justify="left").pack(anchor="w", pady=(0, 14))
         fields = ttk.LabelFrame(pane, text=self.t("① 作成する操作を指定", "1. Set up a page capture"), padding=12)
@@ -162,6 +175,8 @@ class BrowserAutomationDesktop:
         ), wraplength=870, justify="left").pack(anchor="w", pady=(4, 12))
         ttk.Button(pane, text=self.t("新規設定を保存して次へ →", "Save new workflow and continue →"),
                    command=self._create_guided_config).pack(anchor="w", pady=(0, 10))
+        ttk.Button(pane, text=self.t("クリック・入力・保存の手順を画面で追加 →", "Build click/fill/download steps →"),
+                   command=lambda: self.notebook.select(self.step_tab)).pack(anchor="w", pady=(0, 10))
         ttk.Button(pane, text=self.t("既存JSONを使う（詳細画面へ）", "Use existing JSON (advanced)"),
                    command=lambda: self.notebook.select(self.advanced_tab)).pack(anchor="w")
         ttk.Button(
@@ -169,10 +184,10 @@ class BrowserAutomationDesktop:
             command=self._check_browser_runtime,
         ).pack(anchor="w", pady=(9, 0))
         ttk.Label(pane, text=self.t(
-            "注意：この簡単設定ではクリックやログインは自動化しません。\n"
-            "高度な操作は詳細JSONで設定します。外部サイトの利用規約と権限を守ってください。",
-            "This starter workflow never clicks forms or logs in. Advanced actions require editing JSON.\n"
-            "Use only sites and accounts you are authorized to automate.",
+            "注意：この「画像を保存」ボタンだけではクリック・ログインを実行しません。\n"
+            "操作手順タブではクリック・入力・保存を設定できます。複雑な認証は高度な設定が必要です。",
+            "This capture-only button never clicks forms or logs in. The Build steps tab supports explicit input, clicks and downloads.\n"
+            "Use only websites and accounts you are authorized to automate.",
         ), wraplength=870, justify="left").pack(anchor="w", pady=(16, 0))
 
     def _guide_language_changed(self, _event=None) -> None:
@@ -195,6 +210,16 @@ class BrowserAutomationDesktop:
             return
         try:
             from playwright.sync_api import sync_playwright
+            if getattr(sys, "frozen", False):
+                bundled = Path(sys.executable).resolve().parent / "pw-browsers"
+                if not bundled.is_dir():
+                    messagebox.showwarning(
+                        self.t("Chromiumが見つかりません", "Chromium is missing"),
+                        self.t("同梱Chromiumがありません。Windows用パッケージを確認してください。",
+                               "Bundled Chromium is missing; check the installed package."),
+                        parent=self.root)
+                    return
+                os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(bundled)
             with sync_playwright() as client:
                 installed = Path(client.chromium.executable_path).is_file()
             if installed:
@@ -253,6 +278,33 @@ class BrowserAutomationDesktop:
         self._load_config(True)
         self.status.set(self.t("保存完了。次はDry Runです（ブラウザはまだ開いていません）。",
                                "Saved. Next: Dry Run (no browser was opened)."))
+
+    def _save_builder_config(self, config: dict) -> None:
+        if self._live_running:
+            return
+        try:
+            BrowserRunner(config, dry_run=True).run()
+        except (OSError, ValueError, BrowserRunnerError) as exc:
+            messagebox.showerror(self.t("設定エラー", "Validation error"),
+                                 str(exc), parent=self.root)
+            return
+        path = filedialog.asksaveasfilename(
+            parent=self.root, defaultextension=".json",
+            initialfile="browser-steps.json", filetypes=[("JSON", "*.json")])
+        if not path:
+            return
+        try:
+            save_new_config(path, config)
+        except OSError as exc:
+            messagebox.showerror(self.t("保存失敗", "Save failed"), str(exc),
+                                 parent=self.root)
+            return
+        self.preview_revision = None
+        self.config_path.set(str(path))
+        self.notebook.select(self.advanced_tab)
+        self._load_config(True)
+        self.status.set(self.t("保存完了。Dry Runで検証してください（ブラウザ未実行）。",
+                               "Saved. Run Dry Run (browser not launched)."))
 
     def _language_changed(self, _event=None) -> None:
         if self._live_running:
@@ -425,6 +477,20 @@ def self_test() -> int:
             raise RuntimeError("Dry Run unexpectedly wrote an image")
     return 0
 
+def browser_smoke() -> int:
+    """Offline real Chromium launch for isolated Windows packaging acceptance."""
+    import tempfile
+    with tempfile.TemporaryDirectory(prefix="browser-chromium-smoke-") as path:
+        config = {
+            "root_dir": path, "allow_hosts": ["example.com"],
+            "steps": [{"action": "goto", "url": "about:blank"}],
+            "headless": True,
+        }
+        with contextlib.redirect_stdout(io.StringIO()):
+            BrowserRunner(config, dry_run=False).run()
+    return 0
+
+
 def main() -> None:
     root = tk.Tk()
     BrowserAutomationDesktop(root)
@@ -435,4 +501,6 @@ if __name__ == "__main__":
     import sys
     if sys.argv[1:] == ["--self-test"]:
         raise SystemExit(self_test())
+    if sys.argv[1:] == ["--browser-smoke"]:
+        raise SystemExit(browser_smoke())
     main()
