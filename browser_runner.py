@@ -15,6 +15,32 @@ from playwright.sync_api import BrowserContext, Error as PlaywrightError, Page, 
 class BrowserRunnerError(RuntimeError):
     pass
 
+# URLs and resource requests can become visible in logs, screenshots or browser
+# history. Credentials must never travel in query parameters or userinfo.
+_SECRET_QUERY = {"token", "access_token", "api_key", "apikey", "key",
+                 "password", "secret", "client_secret", "signature", "auth"}
+
+
+def _approved_https_url(url: str, approved: set[str]) -> bool:
+    try:
+        parsed = urllib.parse.urlparse(url)
+        host = (parsed.hostname or "").lower().rstrip(".")
+        return (
+            parsed.scheme == "https"
+            and host in approved
+            and parsed.username is None
+            and parsed.password is None
+            and parsed.port in (None, 443)
+            and not parsed.fragment
+            and not any(
+                key.lower() in _SECRET_QUERY
+                for key, _ in urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+            )
+        )
+    except (ValueError, TypeError):
+        return False
+
+
 
 def resolve_env(value: Any) -> Any:
     if isinstance(value, str) and value.startswith("${ENV:") and value.endswith("}"):
@@ -89,14 +115,9 @@ class BrowserRunner:
     def _assert_allowed_url(self, url: str) -> None:
         if url == "about:blank":
             return
-        parsed = urllib.parse.urlparse(url)
-        host = (parsed.hostname or "").lower()
-        if parsed.username or parsed.password:
-            raise BrowserRunnerError("Credentials in navigation URL are not allowed")
-        if parsed.scheme != "https":
-            raise BrowserRunnerError(f"Only HTTPS navigation is allowed: {url}")
-        if host not in self.allowed_hosts:
-            raise BrowserRunnerError(f"Top-level host is not allowed: {host}")
+        if not _approved_https_url(url, self.allowed_hosts):
+            # Deliberately avoid echoing a potentially secret-bearing URL.
+            raise BrowserRunnerError("Navigation requires an approved HTTPS URL without credentials")
 
     def _route_guard(self, route: Route) -> None:
         request = route.request
@@ -109,8 +130,7 @@ class BrowserRunner:
             if url == "about:blank":
                 route.continue_()
                 return
-            host = (parsed.hostname or "").lower()
-            if parsed.username or parsed.password or parsed.scheme != "https" or host not in self.allowed_hosts:
+            if not _approved_https_url(url, self.allowed_hosts):
                 route.abort(error_code="blockedbyclient")
                 return
             route.continue_()
@@ -121,8 +141,7 @@ class BrowserRunner:
         if parsed.scheme in {"about", "data", "blob"}:
             route.continue_()
             return
-        host = (parsed.hostname or "").lower()
-        if parsed.username or parsed.password or parsed.scheme != "https" or host not in self.network_hosts:
+        if not _approved_https_url(url, self.network_hosts):
             route.abort(error_code="blockedbyclient")
             return
         route.continue_()
