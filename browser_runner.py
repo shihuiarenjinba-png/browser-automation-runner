@@ -10,6 +10,8 @@ from typing import Any
 
 from playwright.sync_api import BrowserContext, Error as PlaywrightError, Page, Route, sync_playwright
 
+from output_safety import OutputSafetyError, save_capture
+
 
 class BrowserRunnerError(RuntimeError):
     pass
@@ -132,20 +134,19 @@ class BrowserRunner:
             path = self._path(str(step["path"]))
             overwrite = bool(step.get("overwrite", False))
             self._check_output(path, overwrite)
-            path.parent.mkdir(parents=True, exist_ok=True)
-            page.screenshot(path=str(path), full_page=bool(step.get("full_page", False)))
+            save_capture(path, lambda temporary: page.screenshot(path=str(temporary),
+                         full_page=bool(step.get("full_page", False))), overwrite=overwrite)
 
         elif action == "download":
             path = self._path(str(step["save_as"]))
             overwrite = bool(step.get("overwrite", False))
             self._check_output(path, overwrite)
-            path.parent.mkdir(parents=True, exist_ok=True)
-            if path.exists() and overwrite:
-                path.unlink()
-            with page.expect_download() as download_info:
-                page.locator(selector).click()
-            download_info.value.save_as(str(path))
-            self._assert_allowed_url(page.url)
+            def capture_download(temporary: Path) -> None:
+                with page.expect_download() as download_info:
+                    page.locator(selector).click()
+                download_info.value.save_as(str(temporary))
+                self._assert_allowed_url(page.url)
+            save_capture(path, capture_download, overwrite=overwrite)
 
     def run(self) -> None:
         for step in self.steps:
@@ -187,7 +188,7 @@ def main() -> int:
         config = json.loads(args.config.read_text(encoding="utf-8"))
         BrowserRunner(config, dry_run=args.dry_run).run()
         return 0
-    except (OSError, json.JSONDecodeError, KeyError, ValueError, BrowserRunnerError, PlaywrightError) as exc:
+    except (OSError, json.JSONDecodeError, KeyError, ValueError, BrowserRunnerError, PlaywrightError, OutputSafetyError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 
