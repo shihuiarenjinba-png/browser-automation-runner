@@ -47,9 +47,7 @@ HTTPS page URL and screenshot name → Save new JSON → Dry Run (structure only
 → Confirm live browser run`. Saving a JSON file itself does not launch
 Chromium or navigate to any website.
 
-The wizard deliberately supports **navigation plus a screenshot only**;
-it is not an interactive visual editor for arbitrary login, click, fill or
-download actions. Those advanced functions still need edited JSON. This
+The Start Here wizard remains navigation+screenshot, but a **Build steps** tab now also supports click, fill, wait, select, check/uncheck and download actions without editing JSON. Complex multi-host/login workflows remain advanced. Windows GUI/real-site QA is not yet passed. This
 product is neither an AI browser agent nor a universal API replacement.
 
 `guided_config.py` rejects blank/missing save locations, IP/local hosts,
@@ -67,3 +65,6 @@ Packaging `desktop_app.py` alone does not demonstrate bundling Chromium;
 the clean-PC runtime package and associated notices must be verified.
 Store ID/Publisher are recorded in
 `store/PARTNER_CENTER_IDENTITY_HANDOFF_20261018.md`.
+
+
+**New validation build:** build_windows.ps1 stages Chromium beside the EXE and requires an offline `--browser-smoke` real launch. A CI job or operator must actually run this before claiming it passes. The final MSIX must distribute the adjacent `pw-browsers` directory, not the EXE alone. New offline tests: tests/test_no_code_steps.py.
