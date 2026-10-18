@@ -86,3 +86,21 @@ websites, and not a statement that Chromium is packaged correctly.
 GitHub Actions jobs are currently failing before any steps execute; see
 `QA_HANDOFF_20261018.md`. Source QA, browser runtime packaging, and
 interactive Windows acceptance remain **HOLD**.
+
+## 起動時に分かる画面 / First-run guided GUI (draft 2026-10-18)
+
+Windows用GUIは起動直後に **「はじめに・新規設定 / Start here」** を表示します。
+
+- **何をする商品か：** 事前に決めたWebページ操作（ページを開く、画像保存、詳細JSONで入力・クリックなど）を順番どおりに実行する上級者向けツール。AIによる自動判断ではありません。
+- **初心者向け設定：** 画像保存フォルダー、ページのHTTPS URL、画像ファイル名を入力 → JSONを新規保存 → 詳細画面でDry Run → 確認して実ブラウザを起動。
+- **この画面で作れるのはページ表示＋画像保存のみ：** Webログイン・クリック・入力・ダウンロードの設定は詳細JSONが必要です。Dry Runは実ブラウザを起動せず、構造・許可ホストを検証するだけです。
+- **保存時の安全性：** 既存JSONも同名画像も上書きしません。ユーザー情報入りURL、IPアドレス、ローカルホスト、非HTTPS、秘密クエリ付きURLを初心者フォームで拒否します。
+- **販売上の重要な残課題：** Playwright/Chromium実行環境がEXEに完全同梱されることと、クリーンPC起動は未検証。CI/実機/MSIX/Store審査はHOLDです。
+
+### English
+The default Start Here view describes the advanced browser automation product,
+creates a safe two-step workflow (navigate then screenshot) without requiring
+JSON editing, and moves to Advanced for no-browser Dry Run and explicit live
+approval. Complex actions still require advanced JSON configuration.
+Check `tests/test_guided_config.py` and browser runtime installation on a
+controlled Windows machine before using this as a sales claim.
