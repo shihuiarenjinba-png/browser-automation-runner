@@ -40,7 +40,7 @@ class BrowserWindow(ttk.Frame):
         ttk.Button(self, text="Delete selected", command=self.delete).grid(row=5, column=1, sticky="w")
         self.items = tk.Listbox(self, height=10, exportselection=False)
         self.items.grid(row=6, column=0, columnspan=3, sticky="nsew")
-        self.rowconfigure(5, weight=1)
+        self.rowconfigure(6, weight=1)
         controls = ttk.Frame(self)
         controls.grid(row=7, column=0, columnspan=3, sticky="w", pady=8)
         for title, fn in (("Load", self.load), ("Save", self.save),
@@ -100,6 +100,10 @@ class BrowserWindow(ttk.Frame):
             return
         try:
             data = json.loads(Path(path).read_text(encoding="utf-8"))
+            supported = {"root_dir", "allow_hosts", "resource_hosts",
+                         "headless", "timeout_ms", "steps"}
+            if set(data) - supported or data.get("headless", True) is not True or data.get("timeout_ms", 30000) != 30000:
+                raise ValueError("This settings file has advanced options this editor cannot preserve")
             cfg = make_config(data["root_dir"], ",".join(data["allow_hosts"]),
                               data["steps"], ",".join(data.get("resource_hosts", [])))
             BrowserRunner(cfg, dry_run=True).run()
