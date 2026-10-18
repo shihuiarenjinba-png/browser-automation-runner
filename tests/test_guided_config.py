@@ -36,7 +36,7 @@ class GuidedBrowserSetupTests(unittest.TestCase):
         for url in ("http://example.com", "https://user:p@example.com/",
                     "https://localhost", "https://127.0.0.1",
                     "https://192.168.0.1/", "https://example.com:81",
-                    "https://example.com/#fragment", "https://bad host/"):
+                    "https://example.com/#fragment", "https://example.com/?api_key=secret", "https://bad host/"):
             with self.subTest(url=url), self.assertRaises(GuidedConfigError):
                 https_host(url)
 
