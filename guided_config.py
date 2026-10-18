@@ -24,6 +24,8 @@ def https_host(url: str) -> str:
         raise GuidedConfigError("Invalid URL / URLの形式を確認してください") from exc
     if parsed.scheme != "https" or not host or parsed.username or parsed.password or parsed.fragment:
         raise GuidedConfigError("Only HTTPS without credentials or fragments is allowed")
+    if parsed.query:
+        raise GuidedConfigError("Remove URL query parameters; use advanced setup for query strings")
     if port is not None and port != 443:
         raise GuidedConfigError("Guided setup supports HTTPS port 443 only")
     if host == "localhost" or host.endswith(".local"):
