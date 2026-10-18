@@ -82,6 +82,13 @@ class BrowserPreviewGuardTests(unittest.TestCase):
             self.app._run_live()
         warning.assert_called_once()
 
+    def test_example_workflow_is_bundled_in_desktop_exe(self):
+        root = Path(__file__).resolve().parents[1]
+        build = (root / "build_windows.ps1").read_text(encoding="utf-8")
+        self.assertIn('--add-data "workflow.example.json;."', build)
+        sample = json.loads((root / "workflow.example.json").read_text(encoding="utf-8"))
+        self.assertEqual(sample.get("allow_hosts"), ["example.com"])
+
 
 if __name__ == "__main__":
     unittest.main()
