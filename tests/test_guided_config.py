@@ -42,7 +42,7 @@ class GuidedBrowserSetupTests(unittest.TestCase):
 
     def test_screenshot_filename_cannot_escape_or_use_reserved_names(self):
         for name in ("../out.png", "sub/capture.png", "C:drive.png",
-                     "con.png", "page.jpg", "hidden/.png", ".png"):
+                     "con.png", "COM1.png", "lpt9.PNG", "page.jpg", "hidden/.png", ".png"):
             with self.subTest(name=name), self.assertRaises(GuidedConfigError):
                 self.make(filename=name)
 
