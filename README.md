@@ -59,3 +59,48 @@ python browser_runner.py workflow.example.json
 ## 注意
 
 ブラウザ自動化はWeb UI変更の影響を受けます。Google/Blogger/YouTube等、公式APIがあるサービスはこのRepoではなくAPI Connectorを優先します。
+
+## 保存先の安全性とGUIの改良（レビュー中）
+
+- スクリーンショットとダウンロードは、同じフォルダー内に一意の一時ファイルを作り、内容を書き終えてから公開します。
+- `overwrite: false` では、実行中に他のプロセスが同じファイル名を作った場合も安全停止し、相手が作ったファイルは上書きしません。
+- `overwrite: true` のときのみ明示的に置換します。上書きが必要な運用では十分に注意してください。
+- 一時ファイル名の固定を廃止し、複数処理が同時に走っても互いの一時出力を削除しないようにしました。
+- GUI起動時に既存の `workflow.example.json` を読み込めるよう修正し、実行中に言語表示を切り替えても多重実行しないようにしました。
+
+注: 同一ディレクトリでの `os.link` による上書き禁止の排他公開を使用します。ファイルシステムが対応しない場合は上書きせず失敗する設計です。WindowsのNTFS・OneDrive同期フォルダー・ネットワーク共有など、実際の販売対象環境での動作確認は未完了です。GitHub Actionsの緑判定、Playwright実ブラウザ試験、MSIX実機試験が完了するまでは販売HOLDです。
+
+## Beginner guidance and single-use preview (2026-10-18, unverified draft)
+
+The desktop explains the practical flow: choose the workflow JSON, validate
+the hosts/actions via Dry Run, then confirm browser execution. **Dry Run
+does not navigate a real website**. It is only structural and network
+allowlist validation.
+
+Live browser execution requires the same JSON content **and path** that passed
+Dry Run. Approval is consumed before browser startup, and changing the
+workflow invalidates it. Language and file selection changes are blocked
+during live execution. This is a GUI gate, not a sandbox against unsafe
+websites, and not a statement that Chromium is packaged correctly.
+
+GitHub Actions jobs are currently failing before any steps execute; see
+`QA_HANDOFF_20261018.md`. Source QA, browser runtime packaging, and
+interactive Windows acceptance remain **HOLD**.
+
+## 起動時に分かる画面 / First-run guided GUI (draft 2026-10-18)
+
+Windows用GUIは起動直後に **「はじめに・新規設定 / Start here」** を表示します。
+
+- **何をする商品か：** 事前に決めたWebページ操作（ページを開く、画像保存、詳細JSONで入力・クリックなど）を順番どおりに実行する上級者向けツール。AIによる自動判断ではありません。
+- **初心者向け設定：** 画像保存フォルダー、ページのHTTPS URL、画像ファイル名を入力 → JSONを新規保存 → 詳細画面でDry Run → 確認して実ブラウザを起動。
+- **この画面で作れるのはページ表示＋画像保存のみ：** Webログイン・クリック・入力・ダウンロードの設定は詳細JSONが必要です。Dry Runは実ブラウザを起動せず、構造・許可ホストを検証するだけです。
+- **保存時の安全性：** 既存JSONも同名画像も上書きしません。ユーザー情報入りURL、IPアドレス、ローカルホスト、非HTTPS、秘密クエリ付きURLを初心者フォームで拒否します。
+- **販売上の重要な残課題：** Playwright/Chromium実行環境がEXEに完全同梱されることと、クリーンPC起動は未検証。CI/実機/MSIX/Store審査はHOLDです。
+
+### English
+The default Start Here view describes the advanced browser automation product,
+creates a safe two-step workflow (navigate then screenshot) without requiring
+JSON editing, and moves to Advanced for no-browser Dry Run and explicit live
+approval. Complex actions still require advanced JSON configuration.
+Check `tests/test_guided_config.py` and browser runtime installation on a
+controlled Windows machine before using this as a sales claim.
