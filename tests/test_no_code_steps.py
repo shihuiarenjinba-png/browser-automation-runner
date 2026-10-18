@@ -43,6 +43,23 @@ class StepBuilderTests(unittest.TestCase):
             self.make([{"action": "download", "selector": "#x",
                         "save_as": "../../secret.csv"}])
 
+    def test_packaged_offline_preview_without_browser_does_not_require_runtime(self):
+        from browser_runner import BrowserRunner
+        config = self.make([build_extra_step(action="wait_for", selector=".ready")])
+        import browser_runner
+        frozen_exe = str(self.root / "mock-app.exe")
+        with patch.object(browser_runner.sys, "frozen", True, create=True), \
+             patch.object(browser_runner.sys, "executable", frozen_exe), \
+             patch("browser_runner.sync_playwright") as browser:
+            # The portable Dry Run must work even before Chromium is installed.
+            BrowserRunner(config, dry_run=True).run()
+            browser.assert_not_called()
+            with self.assertRaisesRegex(browser_runner.BrowserRunnerError,
+                                        "Bundled Chromium runtime folder missing"):
+                BrowserRunner(config, dry_run=False).run()
+            browser.assert_not_called()
+        self.assertFalse((self.root / "screenshots").exists())
+
     def test_existing_json_not_replaced_and_dry_run_never_browses(self):
         config = self.make([build_extra_step(action="wait_for", selector=".ready")])
         with patch("browser_runner.sync_playwright") as playwright:
