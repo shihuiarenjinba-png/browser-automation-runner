@@ -70,14 +70,18 @@ class BrowserStepBuilder(ttk.Frame):
         self.help_text = tk.StringVar(value="")
         ttk.Label(frame, textvariable=self.help_text, wraplength=650).grid(
             row=4, column=0, columnspan=2, sticky="w", pady=3)
-        ttk.Button(frame, text=self.t("手順に追加", "Add step"),
-                   command=self.add_step).grid(row=5, column=1, sticky="w", pady=5)
+        controls = ttk.Frame(frame)
+        controls.grid(row=5, column=1, sticky="w", pady=5)
+        ttk.Button(controls, text=self.t("手順に追加", "Add step"),
+                   command=self.add_step).pack(side="left")
+        ttk.Button(controls, text=self.t("選択中の手順を変更", "Replace selected step"),
+                   command=self.replace_selected).pack(side="left", padx=(7, 0))
         self._update_action_inputs()
         ttk.Label(self, text=self.t(
-            "CSS selector例: #submit / input[name='keyword'] / button.search。"
-            "認証情報などは直接入力しないでください（環境変数参照を使用）。",
-            "Example selectors: #submit / input[name='keyword'] / button.search. "
-            "Never paste passwords or API tokens; reference an environment variable."),
+            "CSS selector例: #submit / input[name='keyword']。表内の手順はダブルクリックで読み込み、"
+            "「選択中の手順を変更」で編集できます。パスワード等は環境変数参照を使用。",
+            "CSS examples: #submit / input[name='keyword']. Double-click a step to load it, "
+            "then click Replace selected step to update. Use environment variables for secrets."),
             wraplength=890).pack(anchor="w", pady=5)
         group = ttk.LabelFrame(self, text=self.t("実行順（前から順に実行）", "Run order"), padding=6)
         group.pack(fill="both", expand=True, pady=4)
@@ -169,6 +173,26 @@ class BrowserStepBuilder(ttk.Frame):
         self.value.set("")
         self.refresh()
         self.tree.selection_set(str(len(self.steps)-1))
+
+    def replace_selected(self) -> None:
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showinfo(self.t("手順を選択", "Select a step"),
+                                self.t("変更する手順を一覧から選択してください。",
+                                       "Select the step to replace from the list."),
+                                parent=self)
+            return
+        try:
+            updated = build_extra_step(
+                action=self._selected_action(), selector=self.selector.get(),
+                value=self.value.get(), filename=self.filename.get())
+        except GuidedConfigError as exc:
+            messagebox.showerror(self.t("設定エラー", "Invalid step"), str(exc), parent=self)
+            return
+        index = int(selected[0])
+        self.steps[index] = updated
+        self.refresh()
+        self.tree.selection_set(str(index))
 
     def remove(self):
         selected = self.tree.selection()
