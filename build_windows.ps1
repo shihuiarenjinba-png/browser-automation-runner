@@ -12,9 +12,10 @@ $stamp = [guid]::NewGuid().ToString("N")
 $dest = Join-Path $PSScriptRoot ("dist-validation\\BrowserAutomationRunner-" + $stamp)
 $work = Join-Path $env:TEMP ("BrowserAutomationRunner-work-" + $stamp)
 $spec = Join-Path $env:TEMP ("BrowserAutomationRunner-spec-" + $stamp)
+$example = (Resolve-Path (Join-Path $PSScriptRoot "workflow.example.json")).Path
 if (Test-Path -LiteralPath $dest) { throw "Validation output already exists" }
 
-python -m PyInstaller --clean --noconfirm --onefile --windowed --name BrowserAutomationRunner --distpath "$dest" --workpath "$work" --specpath "$spec" --add-data "workflow.example.json;." --collect-all playwright desktop_app.py
+python -m PyInstaller --clean --noconfirm --onefile --windowed --name BrowserAutomationRunner --distpath "$dest" --workpath "$work" --specpath "$spec" --add-data "$example;." --collect-all playwright desktop_app.py
 if ($LASTEXITCODE -ne 0) { throw 'PyInstaller build failed.' }
 # Build a self-contained directory distribution: browser executable and
 # Playwright browser assets live next to the frozen EXE, never in user cache.
@@ -25,7 +26,15 @@ if ($LASTEXITCODE -ne 0) { throw 'Playwright Chromium download/install failed.' 
 if (-not (Test-Path -LiteralPath $browserPath -PathType Container)) {
     throw "No bundled browser runtime directory produced: $browserPath"
 }
-$browserExecutables = @(Get-ChildItem -LiteralPath $browserPath -Filter "chrome*.exe" -File -Recurse -ErrorAction Stop)
+$browserExecutables = @(
+    Get-ChildItem -LiteralPath $browserPath -Directory -Filter "chromium-*" -ErrorAction Stop |
+        ForEach-Object {
+            $candidate = Join-Path $_.FullName "chrome-win64\chrome.exe"
+            if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+                Get-Item -LiteralPath $candidate
+            }
+        }
+)
 if ($browserExecutables.Count -lt 1) { throw 'Bundled Chromium executable not found.' }
 
 $exePath = Join-Path $dest "BrowserAutomationRunner.exe"
@@ -55,3 +64,4 @@ Write-Host "NON-SALES validation EXE: $exePath; SHA256: $sha"
 Write-Host 'Built BrowserAutomationRunner.exe code package after regression and language tests passed.'
 Write-Host 'Validation directory includes adjacent Chromium runtime and offline launch smoke; full browser, license and MSIX acceptance remain HOLD.'
 Write-Host 'Before sale: complete SALES_RELEASE_CHECKLIST.md, including Playwright/Chromium packaging and controlled browser smoke tests.'
+
