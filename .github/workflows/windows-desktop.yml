@@ -2,7 +2,6 @@ name: Windows desktop code build
 
 on:
   pull_request:
-    branches: [main, hardening/reliability-v1]
   push:
     branches: [hardening/reliability-v1, safety/browser-output-collision-20261018]
 
@@ -17,13 +16,30 @@ jobs:
       - name: Build guarded desktop code package
         shell: powershell
         run: powershell -ExecutionPolicy Bypass -File .\build_windows.ps1
-      - name: Upload development EXE
+      - name: Build and verify unsigned Store MSIX draft
+        shell: powershell
+        run: |
+          $candidate = Get-ChildItem -Path dist-validation -Directory | Where-Object {
+            (Test-Path -LiteralPath (Join-Path $_.FullName 'BrowserAutomationRunner.exe')) -and
+            (Test-Path -LiteralPath (Join-Path $_.FullName 'pw-browsers'))
+          } | Select-Object -First 1
+          if (-not $candidate) { throw 'BrowserAutomationRunner complete payload not found' }
+          ./store/build_msix_draft.ps1 `
+            -PayloadDirectory $candidate.FullName `
+            -OutputDirectory ("store-out-" + $env:GITHUB_RUN_ID)
+      - name: Upload complete development payload
         uses: actions/upload-artifact@v4
         with:
-          name: browser-automation-runner-code-exe
-          path: dist-validation/**/BrowserAutomationRunner.exe
-          dist-validation/**/validation-manifest.json
+          name: BrowserAutomationRunner-Windows-with-Chromium
+          path: dist-validation/**
+      - name: Upload unsigned non-release Store MSIX draft
+        uses: actions/upload-artifact@v4
+        with:
+          name: BrowserAutomationRunner-Store-MSIX-UNSIGNED-DRAFT
+          path: |
+            store-out-*/*.msix
+            store-out-*/msix_validation.json
+            store-out-*/msix.sha256.txt
 
-# This artifact is not a sales-ready browser distribution by itself.
-# SALES_RELEASE_CHECKLIST.md still requires validated Playwright/Chromium packaging
-# plus controlled Windows browser smoke tests.
+# These artifacts are unsigned technical drafts, not sales releases.
+
