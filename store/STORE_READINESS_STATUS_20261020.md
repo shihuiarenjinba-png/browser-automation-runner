@@ -2,27 +2,28 @@
 
 **DRAFT / NOT READY FOR SUBMISSION**
 
-Source head reviewed before this documentation commit: `81c1893ed529d6434ba590639847817e91a7305e`.
+Validated source head: `81c1893ed529d6434ba590639847817e91a7305e`.
 
 ## Verified
 
-- Code tests: 40 passed; 22 subtests passed locally.
-- Fresh MSIX build/round-trip validation: PASS.
-- Package hashes: unsigned 7f4b07befa776b9daafbbd42a5db56981da307b740b8afe5e4a6e4dc91e43419; local-validation signed 5c69ae75bfc329164cefb867f238579115db5ba05495b1de50e5a3173e6fe5cc.
-- The local-validation signer matched the intended code-signing certificate thumbprint `60BB363D9BE876439137DFB31247952463106BDD`.
+- Local code tests: 40 passed; 22 subtests passed.
+- Fresh unsigned MSIX build/round-trip: PASS; SHA256 `7f4b07befa776b9daafbbd42a5db56981da307b740b8afe5e4a6e4dc91e43419`.
+- Local-validation signed copy SHA256 `5c69ae75bfc329164cefb867f238579115db5ba05495b1de50e5a3173e6fe5cc`; signer matched thumbprint `60BB363D9BE876439137DFB31247952463106BDD`.
+- Windows API calculated PFN `OkinawaDesktopTools.BrowserAutomationRunner_j8yefg9jgfh58`, matching the captured draft.
+- Bundled provenance: Playwright Python 1.62.0; Chrome for Testing and Headless Shell 151.0.7922.34, revision 1234. Source-payload and round-tripped `chrome.exe` hashes match.
+
+## CI
+
+Current-head runs `39400015925` and `39400015993` are **CI_FAIL_UNDIAGNOSED**. Build and Ubuntu/Windows reliability jobs failed before runner assignment; `steps=[]`; no job-log blob exists. The root cause has not been established.
 
 ## Not yet verified
 
-- Local signed MSIX installation.
-- Launch from the Windows Start menu.
-- Installed-package Japanese/English UI, setting persistence, close/restart, and real safe input/output.
-- Installed-package Store screenshots.
-- Windows App Certification Kit report.
-- Live Partner Center identity re-copy and final listing review.
-- Owner-approved logo, price, markets, IARC answers, privacy/support identity, EULA, and final third-party notices.
+MSIX installation, Start-menu launch, installed JP/EN UI, restart, bundled-browser launch/local safe workflow, Store screenshots, WACK, and live Partner Center identity are NOT TESTED. Customer-visible Playwright notices, final-package SBOM, and owner/legal redistribution approval are still required. No certificate-store change is authorized.
 
-The first Scheduled API Runner install attempt failed with `0x800B0109` because the test certificate is not in `LocalMachine\\TrustedPeople`. No certificate-store change is authorized by this document. Never use `CurrentUser\\Root` or `LocalMachine\\Root`, and never weaken Windows security controls.
+## Submission safeguards
 
-The unpacked MSIX includes Playwright browser payloads and browser ABOUT/license material. Installed-package Chromium launch and local-HTML workflows remain untested. Exact bundled-browser redistribution and customer-visible notices require owner/legal review.
-
-Store submission, publication, main/release merge, external account access, and destructive customer-data operations are not authorized by this status note.
+- Microsoft Standard Application License Terms (SALT) are the default when **Additional license terms** is left blank. A custom EULA is not an engineering prerequisite unless the owner chooses different terms.
+- Prices and Japan/United States markets remain proposals only. Disable future-market automatic expansion.
+- Immediately before certification submission, select **Don't publish this submission until I select Publish now**. The default can publish automatically after certification.
+- AI-generated icons remain unapproved concepts and are not package or Store assets.
+- Certificate-store changes, Store upload/submission/publication, and main/release merges remain unauthorized.
