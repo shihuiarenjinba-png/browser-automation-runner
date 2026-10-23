@@ -2,6 +2,7 @@ name: Windows desktop code build
 
 on:
   pull_request:
+  workflow_dispatch:
   push:
     branches: [hardening/reliability-v1, safety/browser-output-collision-20261018]
 
@@ -9,7 +10,10 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout exact source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -32,6 +36,7 @@ jobs:
         with:
           name: BrowserAutomationRunner-Windows-with-Chromium
           path: dist-validation/**
+          if-no-files-found: error
       - name: Upload unsigned non-release Store MSIX draft
         uses: actions/upload-artifact@v4
         with:
@@ -40,6 +45,7 @@ jobs:
             store-out-*/*.msix
             store-out-*/msix_validation.json
             store-out-*/msix.sha256.txt
+          if-no-files-found: error
 
 # These artifacts are unsigned technical drafts, not sales releases.
 
