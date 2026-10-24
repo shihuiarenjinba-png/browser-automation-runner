@@ -44,5 +44,24 @@ class StoreIdentityDraftTests(unittest.TestCase):
         self.assertIn("git -C $PSScriptRoot rev-parse HEAD", build_script)
 
 
+
+    def test_source_commit_powershell_blocks_are_complete(self):
+        # Detect missing regex terminators and duplicated script content.
+        for relative in ("build_windows.ps1", "store/build_msix_draft.ps1"):
+            with self.subTest(script=relative):
+                script = (ROOT / relative).read_text(encoding="utf-8")
+                guard = "if ($LASTEXITCODE -ne 0 -or $sourceCommit -notmatch '^[0-9a-fA-F]{40}$') {"
+                self.assertEqual(script.count(guard), 1)
+                self.assertEqual(script.count("$sourceCommit = (& git -C "), 1)
+                self.assertEqual(script.count("Unable to resolve exact source commit"), 1)
+                self.assertNotIn("40}$identity", script)
+                self.assertNotIn("40}$stamp", script)
+                if relative.startswith("store/"):
+                    self.assertEqual(script.count("source_commit=$sourceCommit"), 1)
+                    self.assertEqual(script.count("function Assert-Manifest("), 1)
+                else:
+                    self.assertEqual(script.count("source_commit = $sourceCommit"), 1)
+
+
 if __name__ == "__main__": unittest.main()
 
