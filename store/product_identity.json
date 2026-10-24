@@ -1,0 +1,18 @@
+{
+  "product_name": "Browser Automation Runner",
+  "store_product_type": "MSIX or PWA app",
+  "store_status_at_capture": "In draft",
+  "store_id": "9NQHC8VW729G",
+  "package_identity_name": "OkinawaDesktopTools.BrowserAutomationRunner",
+  "publisher": "CN=46263F21-A700-41DB-8C9B-114C22FB82FC",
+  "publisher_display_name": "Okinawa Desktop Tools",
+  "package_family_name": "OkinawaDesktopTools.BrowserAutomationRunner_j8yefg9jgfh58",
+  "initial_msix_version": "1.0.0.0",
+  "evidence": "Owner-provided Microsoft Partner Center product identity screenshot, 2026-10-18",
+  "submission_allowed": false,
+  "notes": "1.0.0.0 is a technical unsigned MSIX validation candidate only, not an owner-approved public release version. The legacy 0.1.0.0 value is preserved in legacy_initial_msix_version. Previous accepted Store version and Partner Center package history have not been verified. Re-copy identity values from the existing Partner Center product before submission. Browser/Chromium redistribution rights and required notices remain separate release gates. Never upload or sell this unsigned draft.",
+  "legacy_initial_msix_version": "0.1.0.0",
+  "msix_package_version_status": "TECHNICAL_DRAFT_ONLY_PUBLIC_RELEASE_HOLD",
+  "previous_store_accepted_version": null,
+  "store_version_history_verified": false
+}

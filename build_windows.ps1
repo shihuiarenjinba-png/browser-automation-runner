@@ -1,5 +1,10 @@
 $ErrorActionPreference = 'Stop'
 
+$sourceCommit = (& git -C $PSScriptRoot rev-parse HEAD).Trim()
+if ($LASTEXITCODE -ne 0 -or $sourceCommit -notmatch '^[0-9a-fA-F]{40}$') {
+    throw 'Unable to resolve exact source commit for validation build.'
+}
+
 python -m pip install --upgrade pip
 if ($LASTEXITCODE -ne 0) { throw 'pip upgrade failed.' }
 python -m pip install -r requirements-build.txt
@@ -12,9 +17,10 @@ $stamp = [guid]::NewGuid().ToString("N")
 $dest = Join-Path $PSScriptRoot ("dist-validation\\BrowserAutomationRunner-" + $stamp)
 $work = Join-Path $env:TEMP ("BrowserAutomationRunner-work-" + $stamp)
 $spec = Join-Path $env:TEMP ("BrowserAutomationRunner-spec-" + $stamp)
+$example = (Resolve-Path (Join-Path $PSScriptRoot "workflow.example.json")).Path
 if (Test-Path -LiteralPath $dest) { throw "Validation output already exists" }
 
-python -m PyInstaller --clean --noconfirm --onefile --windowed --name BrowserAutomationRunner --distpath "$dest" --workpath "$work" --specpath "$spec" --add-data "workflow.example.json;." --collect-all playwright desktop_app.py
+python -m PyInstaller --clean --noconfirm --onefile --windowed --name BrowserAutomationRunner --distpath "$dest" --workpath "$work" --specpath "$spec" --add-data "$example;." --collect-all playwright desktop_app.py
 if ($LASTEXITCODE -ne 0) { throw 'PyInstaller build failed.' }
 # Build a self-contained directory distribution: browser executable and
 # Playwright browser assets live next to the frozen EXE, never in user cache.
@@ -25,7 +31,15 @@ if ($LASTEXITCODE -ne 0) { throw 'Playwright Chromium download/install failed.' 
 if (-not (Test-Path -LiteralPath $browserPath -PathType Container)) {
     throw "No bundled browser runtime directory produced: $browserPath"
 }
-$browserExecutables = @(Get-ChildItem -LiteralPath $browserPath -Filter "chrome*.exe" -File -Recurse -ErrorAction Stop)
+$browserExecutables = @(
+    Get-ChildItem -LiteralPath $browserPath -Directory -Filter "chromium-*" -ErrorAction Stop |
+        ForEach-Object {
+            $candidate = Join-Path $_.FullName "chrome-win64\chrome.exe"
+            if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+                Get-Item -LiteralPath $candidate
+            }
+        }
+)
 if ($browserExecutables.Count -lt 1) { throw 'Bundled Chromium executable not found.' }
 
 $exePath = Join-Path $dest "BrowserAutomationRunner.exe"
@@ -38,6 +52,7 @@ $sha = (Get-FileHash -LiteralPath $exePath -Algorithm SHA256).Hash.ToLowerInvari
 $report = [ordered]@{
     exe = "BrowserAutomationRunner.exe"
     source_entrypoint = "desktop_app.py"
+    source_commit = $sourceCommit
     sha256 = $sha
     packaged_no_network_self_test = "PASS"
     packaged_chromium_offline_smoke = "PASS"
