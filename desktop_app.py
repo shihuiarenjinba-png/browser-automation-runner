@@ -60,7 +60,7 @@ class BrowserAutomationDesktop:
         self.advanced_tab = ttk.Frame(self.notebook)
         self.notebook.add(self.guide_tab, text=self.t("はじめに・新規設定", "Start here / New setup"))
         self.notebook.add(self.step_tab, text=self.t("操作手順を作る", "Build steps"))
-        self.notebook.add(self.advanced_tab, text=self.t("詳細・試運転・実行", "Advanced / Preview / Run"))
+        self.notebook.add(self.advanced_tab, text=self.t("③ 確認して実行", "3. Review / Run"))
         self._build_guide()
         self.step_builder = BrowserStepBuilder(
             self.step_tab, translate=self.t, root_var=self.guide_root,
@@ -82,8 +82,8 @@ class BrowserAutomationDesktop:
         ttk.Label(
             outer,
             text=self.t(
-                "使い方：①操作JSONを選択 → ②Dry Runで設定・許可ホストを確認（ブラウザ操作なし）→ ③内容を確認して実行。APIで代替できないときだけ利用してください。",
-                "Start here: 1. Choose workflow JSON → 2. Dry Run validates steps and host restrictions (no browser actions) → 3. Review and execute. Use only when an API cannot do the job.",
+                "はじめに画面で作業を登録 → 試運転で操作内容を確認（実際のクリックなし）→ 内容を確かめて実行します。",
+                "Create a task from Start here, preview it without browser actions, then review and run. Browser actions require confirmation.",
             ),
             wraplength=900,
         ).pack(anchor="w", pady=(0, 14))
