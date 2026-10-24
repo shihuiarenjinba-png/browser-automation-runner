@@ -60,7 +60,7 @@ class BrowserAutomationDesktop:
         self.advanced_tab = ttk.Frame(self.notebook)
         self.notebook.add(self.guide_tab, text=self.t("はじめに・新規設定", "Start here / New setup"))
         self.notebook.add(self.step_tab, text=self.t("操作手順を作る", "Build steps"))
-        self.notebook.add(self.advanced_tab, text=self.t("詳細・試運転・実行", "Advanced / Preview / Run"))
+        self.notebook.add(self.advanced_tab, text=self.t("③ 確認して実行", "3. Review / Run"))
         self._build_guide()
         self.step_builder = BrowserStepBuilder(
             self.step_tab, translate=self.t, root_var=self.guide_root,
@@ -82,8 +82,8 @@ class BrowserAutomationDesktop:
         ttk.Label(
             outer,
             text=self.t(
-                "使い方：①操作JSONを選択 → ②Dry Runで設定・許可ホストを確認（ブラウザ操作なし）→ ③内容を確認して実行。APIで代替できないときだけ利用してください。",
-                "Start here: 1. Choose workflow JSON → 2. Dry Run validates steps and host restrictions (no browser actions) → 3. Review and execute. Use only when an API cannot do the job.",
+                "はじめに画面で作業を登録 → 試運転で操作内容を確認（実際のクリックなし）→ 内容を確かめて実行します。",
+                "Create a task from Start here, preview it without browser actions, then review and run. Browser actions require confirmation.",
             ),
             wraplength=900,
         ).pack(anchor="w", pady=(0, 14))
@@ -146,7 +146,7 @@ class BrowserAutomationDesktop:
         self.guide_language.pack(side="right")
         self.guide_language.bind("<<ComboboxSelected>>", self._guide_language_changed)
         ttk.Label(pane, text=self.t(
-            "決めたWebページを開き、クリック・入力・画像保存などの手順を自動実行する上級者向けのWindowsアプリです。\n"
+            "登録したWebページを開き、クリック・入力・画像保存などの手順を自動化します。\n"
             "簡易設定でページ画像を保存できます。さらに「操作手順を作る」タブでクリック・入力・ダウンロード等を追加できます。\n"
             "Webサイトの操作画面が変わると失敗する場合があります。APIが利用できる場合はAPIを優先してください。",
             "Automate predefined website steps such as navigation, clicking, form entry, and screenshots.\n"
@@ -162,22 +162,24 @@ class BrowserAutomationDesktop:
             (self.t("画像ファイル名（.png）", "Screenshot filename (.png)"), self.guide_output),
         ]):
             ttk.Label(fields, text=label).grid(row=i, column=0, sticky="w", padx=(0, 10), pady=7)
-            ttk.Entry(fields, textvariable=var).grid(row=i, column=1, sticky="ew", pady=7)
+            ttk.Entry(fields, textvariable=var,
+                      state="readonly" if i == 0 else "normal").grid(
+                          row=i, column=1, sticky="ew", pady=7)
         ttk.Button(fields, text=self.t("選択…", "Browse…"), command=self._choose_guide_root
                    ).grid(row=0, column=2, padx=(8, 0))
         ttk.Label(pane, text=self.t(
-            "② JSONとして新規保存（この操作ではブラウザを開きません）。\n"
+            "② 設定を保存します（この段階ではブラウザを開きません）。\n"
             "③ 次の画面でDry Runで設定を確認 → 実ブラウザ起動を承認するとページを開いて画像を保存します。\n"
             "画像が既にあるときは上書きしません。",
-            "2. Save as a new JSON file (this does not open the browser).\n"
+            "2. Save your setup (this does not open the browser).\n"
             "3. On the next screen, Dry Run validates settings. Confirm a real browser run to capture the page.\n"
             "Existing screenshots are never overwritten.",
         ), wraplength=870, justify="left").pack(anchor="w", pady=(4, 12))
-        ttk.Button(pane, text=self.t("新規設定を保存して次へ →", "Save new workflow and continue →"),
+        ttk.Button(pane, text=self.t("設定を保存して次へ →", "Save setup and continue →"),
                    command=self._create_guided_config).pack(anchor="w", pady=(0, 10))
         ttk.Button(pane, text=self.t("クリック・入力・保存の手順を画面で追加 →", "Build click/fill/download steps →"),
                    command=lambda: self.notebook.select(self.step_tab)).pack(anchor="w", pady=(0, 10))
-        ttk.Button(pane, text=self.t("既存JSONを使う（詳細画面へ）", "Use existing JSON (advanced)"),
+        ttk.Button(pane, text=self.t("保存した設定を開く", "Open a saved setup"),
                    command=lambda: self.notebook.select(self.advanced_tab)).pack(anchor="w")
         ttk.Button(
             pane, text=self.t("ブラウザ実行環境を確認（通信なし）", "Check Chromium availability (offline)"),
@@ -185,7 +187,7 @@ class BrowserAutomationDesktop:
         ).pack(anchor="w", pady=(9, 0))
         ttk.Label(pane, text=self.t(
             "注意：この「画像を保存」ボタンだけではクリック・ログインを実行しません。\n"
-            "操作手順タブではクリック・入力・保存を設定できます。複雑な認証は高度な設定が必要です。",
+            "操作手順タブではクリック・入力・保存を設定できます。ログインが必要な操作は事前に動作を確かめてください。",
             "This capture-only button never clicks forms or logs in. The Build steps tab supports explicit input, clicks and downloads.\n"
             "Use only websites and accounts you are authorized to automate.",
         ), wraplength=870, justify="left").pack(anchor="w", pady=(16, 0))
@@ -248,6 +250,7 @@ class BrowserAutomationDesktop:
         name = filedialog.askdirectory(parent=self.root)
         if name:
             self.guide_root.set(name)
+            self.preview_revision = None
 
     def _create_guided_config(self) -> None:
         if self._live_running:
