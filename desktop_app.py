@@ -41,7 +41,7 @@ class BrowserAutomationDesktop:
             self.config_path.set(str(default))
             self._load_config(False)
         else:
-            self.status.set(self.t("APIが無い場合の最終手段", "Advanced fallback only"))
+            self.status.set(self.t("準備完了", "Ready"))
 
     def t(self, ja: str, en: str) -> str:
         return en if self.lang == "en" else ja
@@ -51,16 +51,16 @@ class BrowserAutomationDesktop:
             self.builder_steps = [dict(x) for x in self.step_builder.steps]
         for child in self.root.winfo_children():
             child.destroy()
-        self.root.title(self.t("ブラウザ自動化 — 上級", "Browser Automation Runner — Advanced"))
+        self.root.title(self.t("ブラウザ操作の自動化", "Browser Automation Runner"))
 
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(fill="both", expand=True)
         self.guide_tab = ttk.Frame(self.notebook)
         self.step_tab = ttk.Frame(self.notebook)
         self.advanced_tab = ttk.Frame(self.notebook)
-        self.notebook.add(self.guide_tab, text=self.t("はじめに・新規設定", "Start here / New setup"))
-        self.notebook.add(self.step_tab, text=self.t("操作手順を作る", "Build steps"))
-        self.notebook.add(self.advanced_tab, text=self.t("詳細・試運転・実行", "Advanced / Preview / Run"))
+        self.notebook.add(self.guide_tab, text=self.t("① かんたん設定", "1. Quick setup"))
+        self.notebook.add(self.step_tab, text=self.t("② 操作手順", "2. Build steps"))
+        self.notebook.add(self.advanced_tab, text=self.t("③ 確認・実行", "3. Preview & run"))
         self._build_guide()
         self.step_builder = BrowserStepBuilder(
             self.step_tab, translate=self.t, root_var=self.guide_root,
@@ -82,19 +82,19 @@ class BrowserAutomationDesktop:
         ttk.Label(
             outer,
             text=self.t(
-                "使い方：①操作JSONを選択 → ②Dry Runで設定・許可ホストを確認（ブラウザ操作なし）→ ③内容を確認して実行。APIで代替できないときだけ利用してください。",
-                "Start here: 1. Choose workflow JSON → 2. Dry Run validates steps and host restrictions (no browser actions) → 3. Review and execute. Use only when an API cannot do the job.",
+                "使い方：①保存した操作を選ぶ → ②ブラウザを開かずに試運転 → ③手順を確認してブラウザ実行します。",
+                "Start here: 1. Choose a saved workflow → 2. Preview without opening the browser → 3. Review the steps, then run the browser.",
             ),
             wraplength=900,
         ).pack(anchor="w", pady=(0, 14))
 
-        cfg = ttk.LabelFrame(outer, text=self.t("設定", "Configuration"), padding=10)
+        cfg = ttk.LabelFrame(outer, text=self.t("保存した操作", "Saved workflow"), padding=10)
         cfg.pack(fill="x", pady=(0, 10))
         ttk.Entry(cfg, textvariable=self.config_path).pack(side="left", fill="x", expand=True)
-        ttk.Button(cfg, text=self.t("選択", "Browse"), command=self._browse).pack(side="left", padx=(8, 0))
-        ttk.Button(cfg, text=self.t("検証", "Validate"), command=lambda: self._load_config(True)).pack(side="left", padx=(6, 0))
+        ttk.Button(cfg, text=self.t("操作を選ぶ", "Choose workflow"), command=self._browse).pack(side="left", padx=(8, 0))
+        ttk.Button(cfg, text=self.t("内容を確認", "Check workflow"), command=lambda: self._load_config(True)).pack(side="left", padx=(6, 0))
 
-        summary = ttk.LabelFrame(outer, text=self.t("通信境界", "Network boundary"), padding=8)
+        summary = ttk.LabelFrame(outer, text=self.t("アクセス先の確認", "Allowed websites"), padding=8)
         summary.pack(fill="x", pady=(0, 10))
         self.summary = ttk.Treeview(summary, columns=("item", "value"), show="headings", height=5)
         self.summary.heading("item", text=self.t("項目", "Item"))
@@ -103,22 +103,22 @@ class BrowserAutomationDesktop:
         self.summary.column("value", width=720, anchor="w")
         self.summary.pack(fill="x")
 
-        stepbox = ttk.LabelFrame(outer, text=self.t("操作手順", "Steps"), padding=8)
+        stepbox = ttk.LabelFrame(outer, text=self.t("実行する操作", "Actions to run"), padding=8)
         stepbox.pack(fill="both", expand=True, pady=(0, 10))
         self.steps = tk.Listbox(stepbox, height=10)
         self.steps.pack(fill="both", expand=True)
 
-        actions = ttk.LabelFrame(outer, text=self.t("実行", "Execution"), padding=10)
+        actions = ttk.LabelFrame(outer, text=self.t("試運転してから実行", "Preview before running"), padding=10)
         actions.pack(fill="x", pady=(0, 10))
-        self.dry_btn = ttk.Button(actions, text=self.t("設定確認（Dry Run）", "Dry Run / Validate"), command=self._dry_run)
+        self.dry_btn = ttk.Button(actions, text=self.t("ブラウザを開かず確認", "Preview without browser"), command=self._dry_run)
         self.dry_btn.pack(side="left")
-        self.run_btn = ttk.Button(actions, text=self.t("ブラウザ実行", "Run Browser"), command=self._run_live)
+        self.run_btn = ttk.Button(actions, text=self.t("確認してブラウザ実行", "Confirm and run browser"), command=self._run_live)
         self.run_btn.pack(side="left", padx=6)
         ttk.Label(
             actions,
             text=self.t(
-                "実ブラウザ実行はクリック・入力・ダウンロード等の副作用を起こし得ます。",
-                "Live browser execution may click, type, download, or otherwise cause side effects.",
+                "本実行では設定したクリック・入力・保存などを実際のWebページで実行します。",
+                "A real run performs the configured clicks, typing, downloads, and saves on the website.",
             ),
             wraplength=520,
         ).pack(side="right")
@@ -128,9 +128,7 @@ class BrowserAutomationDesktop:
         self.log = tk.Text(logbox, wrap="word", height=10, state="disabled", font=("Consolas", 9))
         self.log.pack(fill="both", expand=True)
         ttk.Label(outer, textvariable=self.status).pack(fill="x", pady=(8, 0))
-        if self._live_running:
-            self.dry_btn.configure(state="disabled")
-            self.run_btn.configure(state="disabled")
+        self._refresh_action_state()
 
     def _build_guide(self) -> None:
         pane = ttk.Frame(self.guide_tab, padding=20)
@@ -146,12 +144,10 @@ class BrowserAutomationDesktop:
         self.guide_language.pack(side="right")
         self.guide_language.bind("<<ComboboxSelected>>", self._guide_language_changed)
         ttk.Label(pane, text=self.t(
-            "決めたWebページを開き、クリック・入力・画像保存などの手順を自動実行する上級者向けのWindowsアプリです。\n"
-            "簡易設定でページ画像を保存できます。さらに「操作手順を作る」タブでクリック・入力・ダウンロード等を追加できます。\n"
-            "Webサイトの操作画面が変わると失敗する場合があります。APIが利用できる場合はAPIを優先してください。",
-            "Automate predefined website steps such as navigation, clicking, form entry, and screenshots.\n"
-            "Start with a page capture, then use Build steps to add click, fill and download actions.\n"
-            "Website UI changes can break workflows. Prefer official APIs whenever available.",
+            "Webページを開き、クリック・入力・画像保存・ダウンロードなど、決めた操作を順番に自動実行します。\n"
+            "まずはページ画像の保存から始め、必要に応じて「操作手順」でクリックや入力を追加できます。",
+            "Automate a sequence of website actions such as navigation, clicking, form entry, screenshots, and downloads.\n"
+            "Start with a page capture, then add clicks or form input in Build steps when needed.",
         ), wraplength=870, justify="left").pack(anchor="w", pady=(0, 14))
         fields = ttk.LabelFrame(pane, text=self.t("① 作成する操作を指定", "1. Set up a page capture"), padding=12)
         fields.pack(fill="x", pady=(0, 12))
@@ -184,10 +180,8 @@ class BrowserAutomationDesktop:
             command=self._check_browser_runtime,
         ).pack(anchor="w", pady=(9, 0))
         ttk.Label(pane, text=self.t(
-            "注意：この「画像を保存」ボタンだけではクリック・ログインを実行しません。\n"
-            "操作手順タブではクリック・入力・保存を設定できます。複雑な認証は高度な設定が必要です。",
-            "This capture-only button never clicks forms or logs in. The Build steps tab supports explicit input, clicks and downloads.\n"
-            "Use only websites and accounts you are authorized to automate.",
+            "「操作手順」では、実行する内容を上から順に確認できます。実行前には必ず試運転を行います。",
+            "Review the actions in order under Build steps. A preview is required before a real browser run.",
         ), wraplength=870, justify="left").pack(anchor="w", pady=(16, 0))
 
     def _guide_language_changed(self, _event=None) -> None:
@@ -323,7 +317,8 @@ class BrowserAutomationDesktop:
                 self._render(runner)
             except Exception:
                 pass
-        self.status.set(self.t("ブラウザ実行中…", "Browser running…") if self._live_running else self.t("APIが無い場合の最終手段", "Advanced fallback only"))
+        self.status.set(self.t("ブラウザ実行中…", "Browser running…") if self._live_running else self.t("準備完了", "Ready"))
+        self._refresh_action_state()
 
     def _browse(self) -> None:
         if self._live_running:
@@ -350,11 +345,15 @@ class BrowserAutomationDesktop:
             runner.run()
             self.config = raw
             self._render(runner)
-            self.status.set(self.t("設定OK — 上級フォールバック", "Configuration valid — Advanced fallback"))
+            self.status.set(self.t("設定を読み込みました。次に「ブラウザを開かず確認」を実行してください。",
+                                   "Workflow loaded. Next, use Preview without browser."))
+            self._refresh_action_state()
             return True
         except Exception as exc:
             self.config = None
+            self.preview_revision = None
             self.status.set(self.t(f"設定エラー: {type(exc).__name__}", f"Configuration error: {type(exc).__name__}"))
+            self._refresh_action_state()
             if show_error:
                 messagebox.showerror(self.t("設定エラー", "Configuration error"), str(exc), parent=self.root)
             return False
@@ -394,6 +393,24 @@ class BrowserAutomationDesktop:
                     detail = str(step.get("selector", ""))
                 self.steps.insert("end", f"{index}. {action} — {detail}")
 
+    def _preview_matches_current(self) -> bool:
+        if self.preview_revision is None or self.config is None:
+            return False
+        try:
+            return self.preview_revision == self._revision(self.config)
+        except (OSError, ValueError):
+            return False
+
+    def _refresh_action_state(self) -> None:
+        if not hasattr(self, "dry_btn"):
+            return
+        if self._live_running:
+            self.dry_btn.configure(state="disabled")
+            self.run_btn.configure(state="disabled")
+            return
+        self.dry_btn.configure(state="normal")
+        self.run_btn.configure(state="normal" if self._preview_matches_current() else "disabled")
+
     def _append(self, text: str) -> None:
         self.log.configure(state="normal")
         self.log.insert("end", text.rstrip() + "\n")
@@ -411,9 +428,12 @@ class BrowserAutomationDesktop:
         assert self.config is not None
         self.preview_revision = self._revision(self.config)
         self._append(self.t(
-            "Dry Run OK — 設定と通信境界のみ検証しました。ブラウザ操作は実行していません。",
-            "Dry Run OK — configuration/network boundary validated. No browser actions executed.",
+            "試運転OK — 操作手順とアクセス先を確認しました。ブラウザ操作はまだ実行していません。",
+            "Preview OK — actions and allowed websites validated. No browser actions were executed.",
         ))
+        self.status.set(self.t("試運転完了。内容を確認してから実行できます。",
+                               "Preview complete. Review the steps before running."))
+        self._refresh_action_state()
 
     def _run_live(self) -> None:
         if self._live_running or not self._load_config(True):
@@ -428,10 +448,10 @@ class BrowserAutomationDesktop:
             )
             return
         warning = self.t(
-            "ブラウザを実際に操作します。クリック、入力、ダウンロード等が実行され、Webサービス側に副作用が発生する可能性があります。\n\nAPIで代替できないこと、Dry Run、対象アカウントを確認済みの場合だけ続行してください。",
-            "This will control a real browser. Clicks, typing, downloads, or other actions may cause side effects on the website.\n\nContinue only after confirming that no API/local alternative is appropriate, Dry Run passed, and the target account is correct.",
+            "ブラウザを実際に操作します。表示されている手順どおりにクリック・入力・ダウンロード等を実行します。\n\n対象ページと試運転結果を確認済みの場合だけ続行してください。",
+            "This will control a real browser and perform the listed clicks, typing, downloads, or other actions.\n\nContinue only after reviewing the target site and preview result.",
         )
-        if not messagebox.askyesno(self.t("上級ブラウザ実行", "Advanced browser execution"), warning, parent=self.root):
+        if not messagebox.askyesno(self.t("ブラウザを実行", "Run browser workflow"), warning, parent=self.root):
             return
         assert self.config is not None
         raw = self.config
@@ -457,9 +477,8 @@ class BrowserAutomationDesktop:
     def _finish(self, ok: bool, text: str) -> None:
         self._live_running = False
         self._append(text)
-        self.dry_btn.configure(state="normal")
-        self.run_btn.configure(state="normal")
         self.status.set(self.t("実行完了", "Run complete") if ok else self.t("実行失敗", "Run failed"))
+        self._refresh_action_state()
         if not ok:
             messagebox.showerror(self.t("ブラウザ自動化", "Browser Runner"), text[-1500:], parent=self.root)
 
