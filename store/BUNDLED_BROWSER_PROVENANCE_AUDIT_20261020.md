@@ -1,25 +1,59 @@
-# Bundled browser provenance audit — 2026-10-20
+# Bundled browser provenance audit — 2026-11-16
 
-**DRAFT / LEGAL REVIEW REQUIRED**
+**ENGINEERING PROVENANCE PASS / HUMAN REDISTRIBUTION-RIGHTS REVIEW HOLD**
 
-Store-candidate MSIX SHA256: `7f4b07befa776b9daafbbd42a5db56981da307b740b8afe5e4a6e4dc91e43419`.
+## Exact runtime contract
 
-## Exact runtime
+The product pins Playwright Python `>=1.62,<1.63`; current CI resolves the 1.62
+line. Playwright 1.62's published browser version is Chromium 151.0.7922.34.
 
-- Playwright Python: 1.62.0; wheel metadata declares Apache-2.0.
-- `browsers.json`: Chrome for Testing 151.0.7922.34 revision 1234; Chrome Headless Shell 151.0.7922.34 revision 1234; FFmpeg revision 1011; winldd revision 1007.
-- Build path: `build_windows.ps1` sets `PLAYWRIGHT_BROWSERS_PATH`, runs `python -m playwright install chromium`, then the MSIX builder recursively copies the payload. No source patch or binary rewrite step was found.
-- `chrome.exe` source payload and unpacked MSIX: 4,024,832 bytes, SHA256 `409805a16d6416087e6b2f778df1cf8f7bbb267d6b99f6b5bb0a618eace234f2`. This proves this packaging round trip did not modify the executable; it does not independently authenticate the upstream archive.
-- The Chrome/Headless Shell, FFmpeg, and winldd executables checked here are not Authenticode-signed.
+The build:
 
-## Notices
+- freezes Browser Automation Runner;
+- sets a private `PLAYWRIGHT_BROWSERS_PATH`;
+- installs Playwright Chromium into the candidate payload;
+- runs the packaged no-network self-test;
+- runs the packaged bundled-Chromium offline smoke;
+- copies the whole payload into the MSIX stage;
+- validates that Chromium remains present after MakeAppx pack/unpack.
 
-The unpacked MSIX preserves Chrome/Chromium `ABOUT`, `LICENSE.headless_shell`, and FFmpeg `COPYING.LGPLv2.1`. Playwright's `LICENSE`, `NOTICE`, and `ThirdPartyNotices.txt` exist in the build environment but are not exposed as plainly named top-level customer notice files in the unpacked MSIX.
+## Notice/provenance bundle
 
-Before sale: add a customer-readable notices location, generate/scan the final unpacked-package SBOM, preserve all browser notices, repeat hash comparison, and obtain owner/legal approval for paid redistribution of the exact Chrome for Testing payload.
+`store/collect_browser_notices.py` collects evidence from the exact build:
 
-References:
+- Playwright distribution license/notice files;
+- browser-runtime LICENSE / COPYING / NOTICE / ABOUT style files;
+- FFmpeg license material;
+- customer-readable notice index;
+- SHA256 package inventory.
 
-- https://github.com/microsoft/playwright-python/blob/main/pyproject.toml
-- https://github.com/microsoft/playwright/blob/main/NOTICE
-- https://chromium.googlesource.com/chromium/src/+/HEAD/docs/adding_to_third_party.md
+`store/build_msix_draft.ps1` then checks after MSIX unpack that:
+
+- the notice bundle is still present;
+- the package inventory itself is unchanged;
+- every inventoried staged file exists;
+- every inventoried staged file has the same SHA256;
+- BrowserAutomationRunner.exe has the same SHA before/after packaging;
+- at least one bundled Chromium executable remains present.
+
+The validation report records:
+
+- `third_party_notice_bundle_verified=true`;
+- `package_inventory_verified=true`;
+- inventory count;
+- `third_party_rights_approved=false`.
+
+## Human rights decision
+
+GitHub engineering can prove what bytes and notices are bundled. It cannot make the
+owner/legal decision that those terms are acceptable for the intended distribution.
+
+Keep release HOLD until the exact final artifact's notices/inventory are reviewed.
+Do not flip `third_party_rights_approved` merely because CI passes.
+
+Upstream references:
+
+- https://github.com/microsoft/playwright-python
+- https://github.com/microsoft/playwright
+- https://chromium.googlesource.com/chromium/src/
+- https://ffmpeg.org/legal.html
