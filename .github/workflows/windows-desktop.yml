@@ -90,6 +90,8 @@ jobs:
             store-out-*/msix_validation.json
             store-out-*/msix.sha256.txt
             store-out-*/store-product-handoff.json
+            store-out-*/msix-stage/PACKAGE_INVENTORY.json
+            store-out-*/msix-stage/THIRD_PARTY_NOTICES/**
             store/STORE_HANDOFF_PROFILE_20261116.json
             store/LOCAL_FINAL_QA_AND_STORE_HANDOFF_20261116.md
             store/STORE_LISTING_DRAFT_JA_EN.md
