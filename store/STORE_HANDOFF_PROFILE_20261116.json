@@ -1,0 +1,49 @@
+{
+  "schema_version": "store-handoff-profile/1",
+  "product": {
+    "id": "browser-automation-runner",
+    "type": "app",
+    "name": "Browser Automation Runner",
+    "edition": "standard",
+    "summary": "Run guarded local browser workflows with no-write validation and bundled Chromium runtime.",
+    "submission_kind": "new",
+    "submission_route": "msix_pwa_app",
+    "repository": "https://github.com/shihuiarenjinba-png/browser-automation-runner",
+    "source_ref": "codex/browser-standard-consumer-ui-20261113",
+    "market_preset": ""
+  },
+  "identity": {
+    "store_id": "9NQHC8VW729G",
+    "name": "OkinawaDesktopTools.BrowserAutomationRunner",
+    "publisher": "CN=46263F21-A700-41DB-8C9B-114C22FB82FC",
+    "version": "1.0.0.0",
+    "architecture": "x64",
+    "package_family_name": "OkinawaDesktopTools.BrowserAutomationRunner_j8yefg9jgfh58",
+    "package_sid": ""
+  },
+  "commercial": {
+    "model": "free",
+    "strategy": "free_launch",
+    "currency": "JPY",
+    "free_trial": "none"
+  },
+  "distribution": {
+    "audience": "PRIVATE_AUDIENCE_TEST"
+  },
+  "security_fields": {
+    "local_file_folder_access": true,
+    "external_network": true,
+    "external_account_required": false,
+    "camera": false,
+    "microphone": false,
+    "location": false,
+    "restricted_capability_runFullTrust": true,
+    "non_microsoft_driver_or_nt_service": false
+  },
+  "release_holds": [
+    "LOCAL_BUNDLED_CHROMIUM_ACCEPTANCE",
+    "THIRD_PARTY_RIGHTS_OWNER_LEGAL_REVIEW",
+    "LIVE_PARTNER_CENTER_REVERIFY",
+    "OWNER_ASSET_SECURITY_APPROVAL"
+  ]
+}

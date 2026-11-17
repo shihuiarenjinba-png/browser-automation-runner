@@ -1,29 +1,68 @@
-# Store readiness status — 2026-10-20
+# Browser Automation Runner — Store readiness status
 
-**DRAFT / NOT READY FOR SUBMISSION**
+Updated: 2026-11-16 JST
 
-Validated source head: `81c1893ed529d6434ba590639847817e91a7305e`.
+**GITHUB ENGINEERING COMPLETE PENDING FINAL EXACT-HEAD CI / LOCAL BROWSER QA + HUMAN RIGHTS REVIEW HOLD / STORE WRITE HOLD**
 
-## Verified
+Repository branch: `codex/browser-standard-consumer-ui-20261113`  
+Draft PR: #8
 
-- Local code tests: 40 passed; 22 subtests passed.
-- Fresh unsigned MSIX build/round-trip: PASS; SHA256 `7f4b07befa776b9daafbbd42a5db56981da307b740b8afe5e4a6e4dc91e43419`.
-- Local-validation signed copy SHA256 `5c69ae75bfc329164cefb867f238579115db5ba05495b1de50e5a3173e6fe5cc`; signer matched thumbprint `60BB363D9BE876439137DFB31247952463106BDD`.
-- Windows API calculated PFN `OkinawaDesktopTools.BrowserAutomationRunner_j8yefg9jgfh58`, matching the captured draft.
-- Bundled provenance: Playwright Python 1.62.0; Chrome for Testing and Headless Shell 151.0.7922.34, revision 1234. Source-payload and round-tripped `chrome.exe` hashes match.
+## GitHub-side implemented
 
-## CI
+- bilingual guided browser workflow;
+- Dry Run / explicit live-execution guard;
+- navigation and output-collision safety tests;
+- bundled Playwright Chromium runtime;
+- packaged no-network self-test and Chromium offline smoke;
+- unsigned MSIX build;
+- Store Identity / Publisher / Version validation;
+- MakeAppx pack/unpack and EXE/browser roundtrip checks;
+- exact-package `store-product-handoff/2` generation;
+- customer-readable Playwright/Chromium/FFmpeg notice collection;
+- SHA256 `PACKAGE_INVENTORY.json`;
+- post-unpack verification of every inventoried staged file;
+- local final-QA runbook and Store/compliance evidence bundled with the Store artifact.
 
-Current-head runs `39400015925` and `39400015993` are **CI_FAIL_UNDIAGNOSED**. Build and Ubuntu/Windows reliability jobs failed before runner assignment; `steps=[]`; no job-log blob exists. The root cause has not been established.
+The latest exact-head Windows build and reliability workflows must both be SUCCESS
+before downloading the candidate.
 
-## Not yet verified
+## Canonical Store identity
 
-MSIX installation, Start-menu launch, installed JP/EN UI, restart, bundled-browser launch/local safe workflow, Store screenshots, WACK, and live Partner Center identity are NOT TESTED. Customer-visible Playwright notices, final-package SBOM, and owner/legal redistribution approval are still required. No certificate-store change is authorized.
+- Store ID: `9NQHC8VW729G`
+- Identity: `OkinawaDesktopTools.BrowserAutomationRunner`
+- Publisher: `CN=46263F21-A700-41DB-8C9B-114C22FB82FC`
+- PFN: `OkinawaDesktopTools.BrowserAutomationRunner_j8yefg9jgfh58`
+- technical MSIX version: `1.0.0.0`
 
-## Submission safeguards
+Live Partner Center reverification remains mandatory.
 
-- Microsoft Standard Application License Terms (SALT) are the default when **Additional license terms** is left blank. A custom EULA is not an engineering prerequisite unless the owner chooses different terms.
-- Prices and Japan/United States markets remain proposals only. Disable future-market automatic expansion.
-- Immediately before certification submission, select **Don't publish this submission until I select Publish now**. The default can publish automatically after certification.
-- AI-generated icons remain unapproved concepts and are not package or Store assets.
-- Certificate-store changes, Store upload/submission/publication, and main/release merges remain unauthorized.
+## Third-party boundary
+
+GitHub engineering now proves what notice/inventory bytes are shipped and that they
+survive MSIX packaging. It deliberately does **not** set
+`third_party_rights_approved=true`.
+
+Human owner/legal review of the exact final Playwright/Chromium/FFmpeg payload remains
+a release gate.
+
+## Commercial position
+
+Launch model: FREE candidate.
+
+## Local-only remaining gates
+
+- exact artifact SHA verification;
+- physical JP/EN + 100/125/150% DPI;
+- bundled Chromium launch;
+- harmless test-site navigation/screenshot;
+- click/input/wait/select/download;
+- unsafe/local/private navigation rejection;
+- no-overwrite/output-collision behavior;
+- error/re-run UX;
+- human third-party-rights review of exact notice/inventory;
+- live Partner Center reverify;
+- owner assets/security/audience review.
+
+Return PASS through an exact-package `local-final-qa-receipt/1`, then proceed through
+VALIDATE_ONLY -> DRY_RUN -> separately approved package upload. Certification and
+Publish remain separate gates.

@@ -18,13 +18,14 @@ class LanguageUITests(unittest.TestCase):
             path = ROOT / relative
             ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 
-    def test_language_and_advanced_warning_contract(self) -> None:
+    def test_language_and_execution_warning_contract(self) -> None:
         source = (ROOT / "desktop_app.py").read_text(encoding="utf-8")
         self.assertIn("言語 / Language", source)
         self.assertIn('("日本語", "English")', source)
-        self.assertIn("Advanced browser execution", source)
-        self.assertIn("APIで代替できない", source)
-        self.assertIn("No browser actions executed", source)
+        self.assertIn("Run browser workflow", source)
+        self.assertIn("対象ページと試運転結果を確認済み", source)
+        self.assertIn("Preview OK", source)
+        self.assertIn("No browser actions were executed", source)
 
     def test_language_setting_round_trip(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {"LOCALAPPDATA": tmp, "PRIVATE_AUTOMATION_UI_LANGUAGE": ""}, clear=False):

@@ -1,0 +1,29 @@
+{
+  "schema": "standard_product_commercial_position_v1",
+  "updated": "2026-11-15",
+  "product": "browser",
+  "edition": "standard",
+  "launch_model": "FREE",
+  "actual_store_price_change_authorized": false,
+  "rationale": "無料公開候補。Ui.Vision等の高機能な無料競合が強く、現在の価値は安全なシンプル操作にある。まず無料で信頼と利用データを得る。課金は操作作成UXと失敗回復が競合に対して明確に優位になってから。",
+  "release_gates": [
+    "MSIX/Chromium同梱最終検証",
+    "日英Store画像",
+    "無料価格設定のオーナー承認"
+  ],
+  "paid_upgrade_gates": [
+    "操作作成がJSONなしで完結",
+    "クリック対象の選択支援",
+    "失敗箇所と再実行が分かりやすい",
+    "代表的なWeb操作テンプレート",
+    "サイト変更時の回復支援"
+  ],
+  "common_rules": {
+    "jp_en_parity_required": true,
+    "first_success_target_minutes": 3,
+    "preview_before_side_effects": true,
+    "visible_results_required": true,
+    "do_not_advertise_unavailable_features": true,
+    "store_price_or_market_change_requires_owner_approval": true
+  }
+}
